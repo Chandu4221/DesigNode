@@ -2,9 +2,7 @@ package io.github.chandu4221.designode.domain.service
 
 import io.github.chandu4221.designode.domain.event.DomainEvent
 import io.github.chandu4221.designode.domain.model.*
-import io.github.chandu4221.designode.domain.port.ComponentRegistry
-import io.github.chandu4221.designode.domain.port.EventPublisher
-import io.github.chandu4221.designode.domain.port.NodeIdGenerator
+import io.github.chandu4221.designode.domain.port.*
 import io.github.chandu4221.designode.domain.spec.Cardinality
 
 class NodeTree(
@@ -13,19 +11,20 @@ class NodeTree(
     private val publisher: EventPublisher,
     private val idGenerator: NodeIdGenerator,
     root: AtomicNode,
-) {
-    var root: AtomicNode = root
+) : TreeQuery, TreeEditor {
+
+    override var root: AtomicNode = root
         private set
 
     // ─────────────────────────────────────────────────────
     // Query
     // ─────────────────────────────────────────────────────
 
-    fun find(id: NodeId): AtomicNode? = findIn(root, id)
+    override fun find(id: NodeId): AtomicNode? = findIn(root, id)
 
-    fun parentOf(id: NodeId): AtomicNode? = parentIn(root, id)
+    override fun parentOf(id: NodeId): AtomicNode? = parentIn(root, id)
 
-    fun slotOf(parentId: NodeId, childId: NodeId): SlotId? {
+    override fun slotOf(parentId: NodeId, childId: NodeId): SlotId? {
         val parent = find(parentId) ?: return null
         return parent.slots.entries
             .firstOrNull { (_, content) -> content.nodes().any { it.id == childId } }
@@ -36,14 +35,14 @@ class NodeTree(
     // Mutations
     // ─────────────────────────────────────────────────────
 
-    fun insert(
+    override fun insert(
         parentId: NodeId,
         slotId: SlotId,
         type: ComponentTypeId,
-        variant: VariantId? = null,
-        properties: Map<PropertyKey, Value> = emptyMap(),
-        modifiers: List<ModifierToken> = emptyList(),
-        index: Int? = null,
+        variant: VariantId?,
+        properties: Map<PropertyKey, Value>,
+        modifiers: List<ModifierToken>,
+        index: Int?,
     ): Result<NodeId> {
         val parent = find(parentId)
             ?: return failure("Parent not found: ${parentId.value}")
@@ -79,7 +78,7 @@ class NodeTree(
         return Result.success(child.id)
     }
 
-    fun remove(nodeId: NodeId): Result<Unit> {
+    override fun remove(nodeId: NodeId): Result<Unit> {
         if (nodeId == root.id) return failure("Cannot remove root")
 
         val node = find(nodeId) ?: return failure("Node not found: ${nodeId.value}")
@@ -105,11 +104,11 @@ class NodeTree(
         return Result.success(Unit)
     }
 
-    fun move(
+    override fun move(
         nodeId: NodeId,
         toParentId: NodeId,
         toSlotId: SlotId,
-        toIndex: Int? = null,
+        toIndex: Int?,
     ): Result<Unit> {
         if (nodeId == root.id) return failure("Cannot move root")
 
@@ -124,7 +123,6 @@ class NodeTree(
         val fromIndex = fromContent.indexOfFirst { it.id == nodeId }
         val sameSlot = fromParent.id == toParentId && fromSlotId == toSlotId
 
-        // Validate drop into target slot (skip if same slot — it's a reorder)
         val strippedNode = stripInvalidModifiers(node, toParent, toSlotId)
         if (!sameSlot) {
             val siblings = toParent.slots[toSlotId]?.nodes().orEmpty()
@@ -136,13 +134,11 @@ class NodeTree(
             validator.canDrop(toParent, toSlotId, strippedNode).onFailure { return Result.failure(it) }
         }
 
-        // Remove from source
         root = rewrite(root, fromParent.id) { p ->
             val kept = (p.slots[fromSlotId]?.nodes().orEmpty()).filterNot { it.id == nodeId }
             p.copy(slots = p.slots + (fromSlotId to SlotContent.of(kept)))
         }
 
-        // Insert into target
         root = rewrite(root, toParentId) { p ->
             val existing = p.slots[toSlotId]?.nodes().orEmpty()
             val updated = if (toIndex != null && toIndex in 0..existing.size) {
@@ -165,7 +161,6 @@ class NodeTree(
             )
         )
 
-        // If modifiers were stripped, emit a follow-up event
         val stripped = node.modifiers.filterNot { it in strippedNode.modifiers }
         if (stripped.isNotEmpty()) {
             publisher.publish(
@@ -180,7 +175,7 @@ class NodeTree(
         return Result.success(Unit)
     }
 
-    fun updateProperty(nodeId: NodeId, key: PropertyKey, value: Value?): Result<Unit> {
+    override fun updateProperty(nodeId: NodeId, key: PropertyKey, value: Value?): Result<Unit> {
         val node = find(nodeId) ?: return failure("Node not found")
         val old = node.properties[key]
 
@@ -193,7 +188,7 @@ class NodeTree(
         return Result.success(Unit)
     }
 
-    fun updateVariant(nodeId: NodeId, variant: VariantId?): Result<Unit> {
+    override fun updateVariant(nodeId: NodeId, variant: VariantId?): Result<Unit> {
         val node = find(nodeId) ?: return failure("Node not found")
         val old = node.variant
 
@@ -203,7 +198,7 @@ class NodeTree(
         return Result.success(Unit)
     }
 
-    fun updateModifiers(nodeId: NodeId, modifiers: List<ModifierToken>): Result<Unit> {
+    override fun updateModifiers(nodeId: NodeId, modifiers: List<ModifierToken>): Result<Unit> {
         val node = find(nodeId) ?: return failure("Node not found")
         val old = node.modifiers
 

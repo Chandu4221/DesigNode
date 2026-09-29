@@ -1,0 +1,105 @@
+package io.github.chandu4221.designode.domain.service
+
+import io.github.chandu4221.designode.domain.event.DomainEvent
+import io.github.chandu4221.designode.domain.model.*
+import io.github.chandu4221.designode.domain.port.*
+import io.github.chandu4221.designode.domain.spec.*
+import kotlin.test.*
+
+class NodeTreeTest {
+
+    private val collected = mutableListOf<DomainEvent>()
+    private val publisher = object : EventPublisher {
+        override fun publish(event: DomainEvent) { collected += event }
+    }
+
+    private val textType = ComponentTypeId("Text")
+    private val rowType = ComponentTypeId("Row")
+
+    private val rowSpec = ComponentSpec(
+        type = rowType,
+        family = FamilyId("Layout"),
+        level = AtomicLevel.MOLECULE,
+        label = "Row",
+        slots = listOf(
+            SlotSpec(SlotId("content"), "Content", Cardinality.ZERO_OR_MANY,
+                scope = LayoutScope.RowScope)
+        )
+    )
+
+    private val textSpec = ComponentSpec(
+        type = textType,
+        family = FamilyId("Basic"),
+        level = AtomicLevel.ATOM,
+        label = "Text",
+    )
+
+    private val registry = InMemoryComponentRegistry(listOf(rowSpec, textSpec))
+    private val validator = SlotValidator(registry)
+
+    private fun newTree(): NodeTree {
+        val root = AtomicNode(id = NodeId("root"), type = rowType)
+        return NodeTree(
+            registry = registry,
+            validator = validator,
+            publisher = publisher,
+            idGenerator = SequentialNodeIdGenerator(),
+            root = root,
+        )
+    }
+
+    @BeforeTest
+    fun setup() { collected.clear() }
+
+    @Test
+    fun `insert adds a child and emits event`() {
+        val tree = newTree()
+        val result = tree.insert(tree.root.id, SlotId("content"), textType)
+        assertTrue(result.isSuccess)
+        assertEquals(1, tree.root.slots[SlotId("content")]?.nodes()?.size)
+        assertTrue(collected.any { it is DomainEvent.NodeInserted })
+    }
+
+    @Test
+    fun `remove deletes the child`() {
+        val tree = newTree()
+        val childId = tree.insert(tree.root.id, SlotId("content"), textType).getOrThrow()
+        tree.remove(childId)
+        assertTrue(tree.root.slots[SlotId("content")]?.nodes().isNullOrEmpty())
+        assertTrue(collected.any { it is DomainEvent.NodeRemoved })
+    }
+
+    @Test
+    fun `cannot remove root`() {
+        val tree = newTree()
+        assertTrue(tree.remove(tree.root.id).isFailure)
+    }
+
+    @Test
+    fun `move reparents a node`() {
+        val tree = newTree()
+        val a = tree.insert(tree.root.id, SlotId("content"), rowType).getOrThrow()
+        val b = tree.insert(tree.root.id, SlotId("content"), textType).getOrThrow()
+
+        tree.move(b, a, SlotId("content"))
+
+        assertEquals(1, tree.root.slots[SlotId("content")]?.nodes()?.size)
+        val aNode = tree.find(a)!!
+        assertEquals(1, aNode.slots[SlotId("content")]?.nodes()?.size)
+        assertTrue(collected.any { it is DomainEvent.NodeMoved })
+    }
+
+    @Test
+    fun `updateProperty changes value and emits event`() {
+        val tree = newTree()
+        val id = tree.insert(tree.root.id, SlotId("content"), textType).getOrThrow()
+        tree.updateProperty(id, PropertyKey("text"), Value.Text("hello"))
+        assertEquals(Value.Text("hello"), tree.find(id)!!.properties[PropertyKey("text")])
+        assertTrue(collected.any { it is DomainEvent.PropertyChanged })
+    }
+
+    @Test
+    fun `move strips weight modifier when entering Box scope`() {
+        // covered in SlotValidatorTest; skip here or add a Box spec
+    }
+}

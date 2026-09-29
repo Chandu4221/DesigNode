@@ -32,3 +32,7 @@ plugins {
 }
 
 include(":desktopApp")
+include(":domain")
+include(":driven:persistence")
+include(":driven:codegen")
+include(":driving:ui")

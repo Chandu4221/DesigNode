@@ -6,10 +6,28 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+group = "io.github.chandu4221.designode"
+version = "0.1.0"
+
 dependencies {
+    // --- Domain (the hexagon core) ---
+    implementation(project(":domain"))
+
+    // --- Adapters ---
+    implementation(project(":driving:ui"))
+    implementation(project(":driven:persistence"))
+    implementation(project(":driven:codegen"))
+
     implementation(compose.desktop.currentOs)
-    implementation(libs.kotlinx.coroutinesSwing)
+    // -- Coroutines --
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.swing)
+    // -- Compose Tooling --
     implementation(libs.compose.uiToolingPreview)
+}
+
+kotlin {
+    jvmToolchain(25)
 }
 
 compose.desktop {
@@ -18,8 +36,8 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "io.github.chandu4221.designode"
-            packageVersion = "1.0.0"
+            packageName = "DesigNode"
+            packageVersion = "0.1.0"
         }
     }
 }

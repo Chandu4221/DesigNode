@@ -5,16 +5,13 @@ plugins {
 group = "io.github.chandu4221.designode"
 version = "0.1.0"
 
-repositories {
-    mavenCentral()
+kotlin {
+    jvmToolchain(25)
 }
 
 dependencies {
+    implementation(project(":domain"))
     testImplementation(kotlin("test"))
-}
-
-kotlin {
-    jvmToolchain(25)
 }
 
 tasks.test {

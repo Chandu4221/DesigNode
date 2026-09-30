@@ -5,7 +5,6 @@ import io.github.chandu4221.designode.domain.model.*
 import io.github.chandu4221.designode.domain.port.NodeEventPublisher
 import io.github.chandu4221.designode.domain.port.SequentialNodeIdGenerator
 import io.github.chandu4221.designode.domain.spec.AtomicLevel
-import io.github.chandu4221.designode.domain.model.Cardinality
 import io.github.chandu4221.designode.domain.spec.ComponentSpec
 import io.github.chandu4221.designode.domain.spec.SlotSpec
 import kotlin.test.BeforeTest
@@ -30,7 +29,7 @@ class NodeTreeTest {
             SlotSpec(
                 id = SlotId("content"),
                 label = "Content",
-                cardinality = Cardinality.ZERO_OR_MANY,
+                cardinality = Cardinality.ZeroOrMany,
                 scope = LayoutScope.RowScope,
             )
         ),

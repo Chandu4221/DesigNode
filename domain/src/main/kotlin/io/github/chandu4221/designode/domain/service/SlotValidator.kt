@@ -1,13 +1,19 @@
 package io.github.chandu4221.designode.domain.service
 
-import io.github.chandu4221.designode.domain.model.AtomicNode
-import io.github.chandu4221.designode.domain.model.LayoutScope
-import io.github.chandu4221.designode.domain.model.SlotContent
-import io.github.chandu4221.designode.domain.model.SlotId
+import io.github.chandu4221.designode.domain.model.*
 import io.github.chandu4221.designode.domain.port.ComponentRegistry
-import io.github.chandu4221.designode.domain.model.Cardinality
 import io.github.chandu4221.designode.domain.spec.SlotSpec
 
+/**
+ * Pure validator for slot-level rules.
+ *
+ * Answers two different questions:
+ *  - [canDrop]    : can one more child be added to this slot right now?
+ *  - [incompleteSlots] : which slots on this node are not yet satisfied?
+ *
+ * The first fires during editing. The second fires on demand — for example
+ * before exporting code, to refuse a tree that has empty required slots.
+ */
 class SlotValidator(
     private val registry: ComponentRegistry,
 ) {
@@ -27,15 +33,22 @@ class SlotValidator(
             )
         }
 
-        // 2. Cardinality
+        // 2. Cardinality — would adding one more violate the upper bound?
         val existing = parent.slots[slotId] ?: SlotContent.Empty
-        when (slotSpec.cardinality) {
-            Cardinality.ZERO_OR_ONE, Cardinality.EXACTLY_ONE -> {
-                if (existing != SlotContent.Empty) {
+        val currentCount = existing.nodes().size
+        when (val c = slotSpec.cardinality) {
+            Cardinality.ZeroOrOne, Cardinality.ExactlyOne -> {
+                if (currentCount >= 1) {
                     return failure("Slot '${slotSpec.label}' is full")
                 }
             }
-            Cardinality.ZERO_OR_MANY, Cardinality.ONE_OR_MANY -> Unit
+
+            Cardinality.ZeroOrMany, Cardinality.OneOrMany -> Unit
+            is Cardinality.Range -> {
+                if (currentCount >= c.max) {
+                    return failure("Slot '${slotSpec.label}' allows at most ${c.max} children")
+                }
+            }
         }
 
         // 3. Modifier scope
@@ -52,10 +65,25 @@ class SlotValidator(
         return Result.success(Unit)
     }
 
-    fun missingRequiredSlots(node: AtomicNode): List<SlotSpec> {
+    /**
+     * Returns every slot on [node] whose cardinality is not yet satisfied.
+     *
+     * - EXACTLY_ONE  : must have exactly 1 child
+     * - ONE_OR_MANY  : must have at least 1 child
+     * - RANGE(min,max): must have at least `min` children
+     * - ZERO_OR_ONE, ZERO_OR_MANY: always satisfied (no lower bound)
+     */
+    fun incompleteSlots(node: AtomicNode): List<SlotSpec> {
         val spec = registry.spec(node.type) ?: return emptyList()
         return spec.slots.filter { slotSpec ->
-            slotSpec.required && (node.slots[slotSpec.id] ?: SlotContent.Empty) == SlotContent.Empty
+            val count = (node.slots[slotSpec.id] ?: SlotContent.Empty).nodes().size
+            when (val c = slotSpec.cardinality) {
+                Cardinality.ZeroOrOne -> false
+                Cardinality.ExactlyOne -> count != 1
+                Cardinality.ZeroOrMany -> false
+                Cardinality.OneOrMany -> count < 1
+                is Cardinality.Range -> count < c.min
+            }
         }
     }
 

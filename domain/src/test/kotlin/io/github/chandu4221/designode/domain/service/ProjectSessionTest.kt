@@ -45,7 +45,7 @@ class ProjectSessionTest {
             SlotSpec(
                 id = SlotId("content"),
                 label = "Content",
-                cardinality = Cardinality.ZERO_OR_MANY,
+                cardinality = Cardinality.ZeroOrMany,
             )
         ),
     )

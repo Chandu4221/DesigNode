@@ -1,8 +1,12 @@
 package io.github.chandu4221.designode.domain.service
 
 import io.github.chandu4221.designode.domain.model.*
-import io.github.chandu4221.designode.domain.spec.*
-import kotlin.test.*
+import io.github.chandu4221.designode.domain.spec.AtomicLevel
+import io.github.chandu4221.designode.domain.spec.ComponentSpec
+import io.github.chandu4221.designode.domain.spec.SlotSpec
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SlotValidatorTest {
 
@@ -19,12 +23,11 @@ class SlotValidatorTest {
             SlotSpec(
                 id = SlotId("content"),
                 label = "Content",
-                cardinality = Cardinality.EXACTLY_ONE,
+                cardinality = Cardinality.ExactlyOne,
                 accepts = setOf(textType, iconType),
                 isDefault = true,
-                required = true,
             )
-        )
+        ),
     )
 
     private val rowSpec = ComponentSpec(
@@ -36,10 +39,10 @@ class SlotValidatorTest {
             SlotSpec(
                 id = SlotId("content"),
                 label = "Content",
-                cardinality = Cardinality.ZERO_OR_MANY,
+                cardinality = Cardinality.ZeroOrMany,
                 scope = LayoutScope.RowScope,
             )
-        )
+        ),
     )
 
     private val registry = InMemoryComponentRegistry(listOf(buttonSpec, rowSpec))
@@ -102,8 +105,10 @@ class SlotValidatorTest {
             level = AtomicLevel.MOLECULE,
             label = "Box",
             slots = listOf(
-                SlotSpec(SlotId("content"), "Content", Cardinality.ZERO_OR_MANY,
-                    scope = LayoutScope.BoxScope)
+                SlotSpec(
+                    SlotId("content"), "Content", Cardinality.ZeroOrMany,
+                    scope = LayoutScope.BoxScope
+                )
             )
         )
         val reg = InMemoryComponentRegistry(listOf(boxSpec))
@@ -129,19 +134,78 @@ class SlotValidatorTest {
     }
 
     @Test
-    fun `missingRequiredSlots reports unfilled required slot`() {
+    fun `incompleteSlots reports unfilled ExactlyOne slot`() {
         val empty = node(buttonType)
-        val missing = validator.missingRequiredSlots(empty)
+        val missing = validator.incompleteSlots(empty)
         assertEquals(1, missing.size)
         assertEquals(SlotId("content"), missing.first().id)
     }
 
     @Test
-    fun `missingRequiredSlots is empty when required slot filled`() {
+    fun `incompleteSlots is empty when ExactlyOne slot filled`() {
         val filled = node(
             buttonType,
             slots = mapOf(SlotId("content") to SlotContent.One(node(textType))),
         )
-        assertTrue(validator.missingRequiredSlots(filled).isEmpty())
+        assertTrue(validator.incompleteSlots(filled).isEmpty())
+    }
+
+    @Test
+    fun `incompleteSlots reports Range below min`() {
+        val navBarSpec = ComponentSpec(
+            type = ComponentTypeId("NavigationBar"),
+            family = FamilyId("Bars"),
+            level = AtomicLevel.ORGANISM,
+            label = "Navigation bar",
+            slots = listOf(
+                SlotSpec(
+                    id = SlotId("items"),
+                    label = "Items",
+                    cardinality = Cardinality.Range(min = 3, max = 5),
+                )
+            ),
+        )
+        val reg = InMemoryComponentRegistry(listOf(navBarSpec))
+        val v = SlotValidator(reg)
+
+        val partial = node(
+            navBarSpec.type,
+            slots = mapOf(
+                SlotId("items") to SlotContent.of(listOf(node(textType), node(textType)))
+            ),
+        )
+        val missing = v.incompleteSlots(partial)
+        assertEquals(1, missing.size)
+        assertEquals(SlotId("items"), missing.first().id)
+    }
+
+    @Test
+    fun `canDrop rejects Range at max`() {
+        val navBarSpec = ComponentSpec(
+            type = ComponentTypeId("NavigationBar"),
+            family = FamilyId("Bars"),
+            level = AtomicLevel.ORGANISM,
+            label = "Navigation bar",
+            slots = listOf(
+                SlotSpec(
+                    id = SlotId("items"),
+                    label = "Items",
+                    cardinality = Cardinality.Range(min = 3, max = 5),
+                )
+            ),
+        )
+        val reg = InMemoryComponentRegistry(listOf(navBarSpec))
+        val v = SlotValidator(reg)
+
+        val full = node(
+            navBarSpec.type,
+            slots = mapOf(
+                SlotId("items") to SlotContent.of(
+                    List(5) { node(textType) }
+                )
+            ),
+        )
+        val result = v.canDrop(full, SlotId("items"), node(textType))
+        assertTrue(result.isFailure)
     }
 }

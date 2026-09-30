@@ -2,12 +2,7 @@ package io.github.chandu4221.designode.domain.service
 
 import io.github.chandu4221.designode.domain.event.NodeEvent
 import io.github.chandu4221.designode.domain.model.*
-import io.github.chandu4221.designode.domain.port.ComponentRegistry
-import io.github.chandu4221.designode.domain.port.NodeEventPublisher
-import io.github.chandu4221.designode.domain.port.NodeIdGenerator
-import io.github.chandu4221.designode.domain.port.TreeEditor
-import io.github.chandu4221.designode.domain.port.TreeQuery
-import io.github.chandu4221.designode.domain.model.Cardinality
+import io.github.chandu4221.designode.domain.port.*
 
 class NodeTree(
     private val registry: ComponentRegistry,
@@ -132,7 +127,7 @@ class NodeTree(
             val siblings = toParent.slots[toSlotId]?.nodes().orEmpty()
             val targetSpec = registry.require(toParent.type).slots.first { it.id == toSlotId }
             val wouldViolateCardinality =
-                siblings.size >= 1 && targetSpec.cardinality in singleCardinalities
+                siblings.size >= 1 && isSingleCardinality(targetSpec.cardinality)
             if (wouldViolateCardinality) return failure("Slot '${toSlotId.value}' is full")
 
             validator.canDrop(toParent, toSlotId, strippedNode).onFailure { return Result.failure(it) }
@@ -216,8 +211,11 @@ class NodeTree(
     // Internals
     // ─────────────────────────────────────────────────────
 
-    private val singleCardinalities =
-        setOf(Cardinality.ZERO_OR_ONE, Cardinality.EXACTLY_ONE)
+    private fun isSingleCardinality(c: Cardinality): Boolean = when (c) {
+        Cardinality.ZeroOrOne, Cardinality.ExactlyOne -> true
+        is Cardinality.Range -> c.max <= 1
+        Cardinality.ZeroOrMany, Cardinality.OneOrMany -> false
+    }
 
     private fun stripInvalidModifiers(
         node: AtomicNode,

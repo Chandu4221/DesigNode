@@ -3,7 +3,7 @@ package io.github.chandu4221.designode.domain.service
 import io.github.chandu4221.designode.domain.event.ProjectEvent
 import io.github.chandu4221.designode.domain.model.*
 import io.github.chandu4221.designode.domain.port.ComponentRegistry
-import io.github.chandu4221.designode.domain.port.EventPublisher
+import io.github.chandu4221.designode.domain.port.NodeEventPublisher
 import io.github.chandu4221.designode.domain.port.NodeIdGenerator
 import io.github.chandu4221.designode.domain.port.ProjectEventPublisher
 
@@ -11,7 +11,7 @@ class ProjectSession(
     val projectId: ProjectId,
     private val registry: ComponentRegistry,
     private val validator: SlotValidator,
-    private val publisher: EventPublisher,
+    private val publisher: NodeEventPublisher,
     private val projectPublisher: ProjectEventPublisher,
     private val idGenerator: NodeIdGenerator,
 ) {
@@ -132,7 +132,7 @@ class ProjectSession(
             project: Project,
             registry: ComponentRegistry,
             validator: SlotValidator,
-            publisher: EventPublisher,
+            publisher: NodeEventPublisher,
             projectPublisher: ProjectEventPublisher,
             idGenerator: NodeIdGenerator,
         ): ProjectSession {
@@ -144,7 +144,7 @@ class ProjectSession(
                 projectPublisher = projectPublisher,
                 idGenerator = idGenerator,
             )
-            session.projectName = project.name        // ← must be here
+            session.projectName = project.name
             project.screens.forEach { (id, screen) ->
                 session.trees[id] = NodeTree(registry, validator, publisher, idGenerator, screen.root)
                 session.screenNames[id] = screen.name

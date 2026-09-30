@@ -1,4 +1,4 @@
-package io.github.chandu4221.designode.domain.spec
+package io.github.chandu4221.designode.domain.model
 
 enum class PropertyKind {
     TEXT,

@@ -5,7 +5,7 @@ import io.github.chandu4221.designode.domain.model.LayoutScope
 import io.github.chandu4221.designode.domain.model.SlotContent
 import io.github.chandu4221.designode.domain.model.SlotId
 import io.github.chandu4221.designode.domain.port.ComponentRegistry
-import io.github.chandu4221.designode.domain.spec.Cardinality
+import io.github.chandu4221.designode.domain.model.Cardinality
 import io.github.chandu4221.designode.domain.spec.SlotSpec
 
 class SlotValidator(

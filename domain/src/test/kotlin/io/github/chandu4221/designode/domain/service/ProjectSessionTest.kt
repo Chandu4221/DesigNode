@@ -1,13 +1,12 @@
 package io.github.chandu4221.designode.domain.service
 
-import io.github.chandu4221.designode.domain.event.DomainEvent
+import io.github.chandu4221.designode.domain.event.NodeEvent
 import io.github.chandu4221.designode.domain.event.ProjectEvent
 import io.github.chandu4221.designode.domain.model.*
-import io.github.chandu4221.designode.domain.port.EventPublisher
+import io.github.chandu4221.designode.domain.port.NodeEventPublisher
 import io.github.chandu4221.designode.domain.port.ProjectEventPublisher
 import io.github.chandu4221.designode.domain.port.SequentialNodeIdGenerator
 import io.github.chandu4221.designode.domain.spec.AtomicLevel
-import io.github.chandu4221.designode.domain.spec.Cardinality
 import io.github.chandu4221.designode.domain.spec.ComponentSpec
 import io.github.chandu4221.designode.domain.spec.SlotSpec
 import kotlin.test.BeforeTest
@@ -27,10 +26,8 @@ class ProjectSessionTest {
         collected += event
     }
 
-    private val publisher = object : EventPublisher {
-        override fun publish(event: DomainEvent) {
-            // NodeTree-level events are ignored in this test suite.
-        }
+    private val publisher = NodeEventPublisher { _: NodeEvent ->
+        // NodeTree-level events are ignored in this test suite.
     }
 
     // ─────────────────────────────────────────────────────
@@ -182,6 +179,7 @@ class ProjectSessionTest {
         assertEquals(a, changed.first().oldScreenId)
         assertEquals(b, changed.first().newScreenId)
     }
+
     @Test
     fun `snapshot round-trips through fromProject`() {
         val session = newSession()

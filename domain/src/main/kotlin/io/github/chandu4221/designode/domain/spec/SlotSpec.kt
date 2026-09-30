@@ -1,5 +1,6 @@
 package io.github.chandu4221.designode.domain.spec
 
+import io.github.chandu4221.designode.domain.model.Cardinality
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.LayoutScope
 import io.github.chandu4221.designode.domain.model.SlotId

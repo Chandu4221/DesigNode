@@ -1,17 +1,22 @@
 package io.github.chandu4221.designode.domain.service
 
-import io.github.chandu4221.designode.domain.event.DomainEvent
+import io.github.chandu4221.designode.domain.event.NodeEvent
 import io.github.chandu4221.designode.domain.model.*
-import io.github.chandu4221.designode.domain.port.*
-import io.github.chandu4221.designode.domain.spec.*
-import kotlin.test.*
+import io.github.chandu4221.designode.domain.port.NodeEventPublisher
+import io.github.chandu4221.designode.domain.port.SequentialNodeIdGenerator
+import io.github.chandu4221.designode.domain.spec.AtomicLevel
+import io.github.chandu4221.designode.domain.model.Cardinality
+import io.github.chandu4221.designode.domain.spec.ComponentSpec
+import io.github.chandu4221.designode.domain.spec.SlotSpec
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class NodeTreeTest {
 
-    private val collected = mutableListOf<DomainEvent>()
-    private val publisher = object : EventPublisher {
-        override fun publish(event: DomainEvent) { collected += event }
-    }
+    private val collected = mutableListOf<NodeEvent>()
+    private val publisher = NodeEventPublisher { event -> collected += event }
 
     private val textType = ComponentTypeId("Text")
     private val rowType = ComponentTypeId("Row")
@@ -22,9 +27,13 @@ class NodeTreeTest {
         level = AtomicLevel.MOLECULE,
         label = "Row",
         slots = listOf(
-            SlotSpec(SlotId("content"), "Content", Cardinality.ZERO_OR_MANY,
-                scope = LayoutScope.RowScope)
-        )
+            SlotSpec(
+                id = SlotId("content"),
+                label = "Content",
+                cardinality = Cardinality.ZERO_OR_MANY,
+                scope = LayoutScope.RowScope,
+            )
+        ),
     )
 
     private val textSpec = ComponentSpec(
@@ -49,7 +58,9 @@ class NodeTreeTest {
     }
 
     @BeforeTest
-    fun setup() { collected.clear() }
+    fun setup() {
+        collected.clear()
+    }
 
     @Test
     fun `insert adds a child and emits event`() {
@@ -57,7 +68,7 @@ class NodeTreeTest {
         val result = tree.insert(tree.root.id, SlotId("content"), textType)
         assertTrue(result.isSuccess)
         assertEquals(1, tree.root.slots[SlotId("content")]?.nodes()?.size)
-        assertTrue(collected.any { it is DomainEvent.NodeInserted })
+        assertTrue(collected.any { it is NodeEvent.NodeInserted })
     }
 
     @Test
@@ -66,7 +77,7 @@ class NodeTreeTest {
         val childId = tree.insert(tree.root.id, SlotId("content"), textType).getOrThrow()
         tree.remove(childId)
         assertTrue(tree.root.slots[SlotId("content")]?.nodes().isNullOrEmpty())
-        assertTrue(collected.any { it is DomainEvent.NodeRemoved })
+        assertTrue(collected.any { it is NodeEvent.NodeRemoved })
     }
 
     @Test
@@ -86,7 +97,7 @@ class NodeTreeTest {
         assertEquals(1, tree.root.slots[SlotId("content")]?.nodes()?.size)
         val aNode = tree.find(a)!!
         assertEquals(1, aNode.slots[SlotId("content")]?.nodes()?.size)
-        assertTrue(collected.any { it is DomainEvent.NodeMoved })
+        assertTrue(collected.any { it is NodeEvent.NodeMoved })
     }
 
     @Test
@@ -95,11 +106,6 @@ class NodeTreeTest {
         val id = tree.insert(tree.root.id, SlotId("content"), textType).getOrThrow()
         tree.updateProperty(id, PropertyKey("text"), Value.Text("hello"))
         assertEquals(Value.Text("hello"), tree.find(id)!!.properties[PropertyKey("text")])
-        assertTrue(collected.any { it is DomainEvent.PropertyChanged })
-    }
-
-    @Test
-    fun `move strips weight modifier when entering Box scope`() {
-        // covered in SlotValidatorTest; skip here or add a Box spec
+        assertTrue(collected.any { it is NodeEvent.PropertyChanged })
     }
 }

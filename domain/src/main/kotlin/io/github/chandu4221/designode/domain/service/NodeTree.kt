@@ -1,14 +1,18 @@
 package io.github.chandu4221.designode.domain.service
 
-import io.github.chandu4221.designode.domain.event.DomainEvent
+import io.github.chandu4221.designode.domain.event.NodeEvent
 import io.github.chandu4221.designode.domain.model.*
-import io.github.chandu4221.designode.domain.port.*
-import io.github.chandu4221.designode.domain.spec.Cardinality
+import io.github.chandu4221.designode.domain.port.ComponentRegistry
+import io.github.chandu4221.designode.domain.port.NodeEventPublisher
+import io.github.chandu4221.designode.domain.port.NodeIdGenerator
+import io.github.chandu4221.designode.domain.port.TreeEditor
+import io.github.chandu4221.designode.domain.port.TreeQuery
+import io.github.chandu4221.designode.domain.model.Cardinality
 
 class NodeTree(
     private val registry: ComponentRegistry,
     private val validator: SlotValidator,
-    private val publisher: EventPublisher,
+    private val publisher: NodeEventPublisher,
     private val idGenerator: NodeIdGenerator,
     root: AtomicNode,
 ) : TreeQuery, TreeEditor {
@@ -68,7 +72,7 @@ class NodeTree(
         }
 
         publisher.publish(
-            DomainEvent.NodeInserted(
+            NodeEvent.NodeInserted(
                 node = child,
                 parentId = parentId,
                 slotId = slotId,
@@ -94,7 +98,7 @@ class NodeTree(
         }
 
         publisher.publish(
-            DomainEvent.NodeRemoved(
+            NodeEvent.NodeRemoved(
                 node = node,
                 parentId = parent.id,
                 slotId = slotId,
@@ -150,7 +154,7 @@ class NodeTree(
         }
 
         publisher.publish(
-            DomainEvent.NodeMoved(
+            NodeEvent.NodeMoved(
                 nodeId = nodeId,
                 fromParentId = fromParent.id,
                 fromSlotId = fromSlotId,
@@ -164,7 +168,7 @@ class NodeTree(
         val stripped = node.modifiers.filterNot { it in strippedNode.modifiers }
         if (stripped.isNotEmpty()) {
             publisher.publish(
-                DomainEvent.ModifiersChanged(
+                NodeEvent.ModifiersChanged(
                     nodeId = nodeId,
                     oldModifiers = node.modifiers,
                     newModifiers = strippedNode.modifiers,
@@ -184,7 +188,7 @@ class NodeTree(
             n.copy(properties = updated)
         }
 
-        publisher.publish(DomainEvent.PropertyChanged(nodeId, key, old, value))
+        publisher.publish(NodeEvent.PropertyChanged(nodeId, key, old, value))
         return Result.success(Unit)
     }
 
@@ -194,7 +198,7 @@ class NodeTree(
 
         root = rewrite(root, nodeId) { it.copy(variant = variant) }
 
-        publisher.publish(DomainEvent.VariantChanged(nodeId, old, variant))
+        publisher.publish(NodeEvent.VariantChanged(nodeId, old, variant))
         return Result.success(Unit)
     }
 
@@ -204,7 +208,7 @@ class NodeTree(
 
         root = rewrite(root, nodeId) { it.copy(modifiers = modifiers) }
 
-        publisher.publish(DomainEvent.ModifiersChanged(nodeId, old, modifiers))
+        publisher.publish(NodeEvent.ModifiersChanged(nodeId, old, modifiers))
         return Result.success(Unit)
     }
 

@@ -1,6 +1,7 @@
 package io.github.chandu4221.designode.domain.spec
 
 import io.github.chandu4221.designode.domain.model.PropertyKey
+import io.github.chandu4221.designode.domain.model.PropertyKind
 import io.github.chandu4221.designode.domain.model.Value
 
 data class PropertySpec(

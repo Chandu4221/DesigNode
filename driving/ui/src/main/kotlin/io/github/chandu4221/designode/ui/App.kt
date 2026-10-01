@@ -1,6 +1,5 @@
 package io.github.chandu4221.designode.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.chandu4221.designode.ui.palette.PalettePanel
 
 @Composable
 fun App(viewModel: EditorViewModel) {
@@ -32,7 +32,10 @@ fun App(viewModel: EditorViewModel) {
             Column(modifier = Modifier.fillMaxSize()) {
                 TopBar()
                 Row(modifier = Modifier.fillMaxSize()) {
-                    PalettePanel(modifier = Modifier.width(240.dp))
+                    PalettePanel(
+                        specs = viewModel.specs,
+                        modifier = Modifier.width(240.dp),
+                    )
                     CanvasPanel(modifier = Modifier.weight(1f))
                     InspectorPanel(modifier = Modifier.width(280.dp))
                 }
@@ -54,22 +57,6 @@ private fun TopBar() {
             Text(
                 text = "DesigNode",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PalettePanel(modifier: Modifier = Modifier) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier.fillMaxHeight(),
-    ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "Palette",
-                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

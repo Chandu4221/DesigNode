@@ -8,6 +8,7 @@ import io.github.chandu4221.designode.domain.port.NodeEventPublisher
 import io.github.chandu4221.designode.domain.port.RandomNodeIdGenerator
 import io.github.chandu4221.designode.domain.service.NodeTree
 import io.github.chandu4221.designode.domain.service.SlotValidator
+import io.github.chandu4221.designode.domain.spec.ComponentSpec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +27,9 @@ class EditorViewModel {
     private val validator = SlotValidator(registry)
     private val publisher = NodeEventPublisher { /* no subscribers yet */ }
     private val idGenerator = RandomNodeIdGenerator
+
+    /** All component specs, for the palette to render. */
+    val specs: List<ComponentSpec> = registry.all()
 
     private val tree = NodeTree(
         registry = registry,

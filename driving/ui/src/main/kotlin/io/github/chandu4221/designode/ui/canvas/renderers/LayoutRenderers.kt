@@ -8,12 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
-import io.github.chandu4221.designode.domain.model.PropertyKey
-import io.github.chandu4221.designode.domain.model.Value
+import io.github.chandu4221.designode.domain.model.SlotId
 import io.github.chandu4221.designode.ui.canvas.PreviewRenderer
-
-private fun enumOf(properties: Map<PropertyKey, Value>, key: String, default: String = ""): String =
-    (properties[PropertyKey(key)] as? Value.EnumValue)?.name ?: default
 
 private fun horizontalArrangement(name: String): Arrangement.Horizontal = when (name) {
     "end" -> Arrangement.End
@@ -60,32 +56,32 @@ private fun boxAlignment(name: String): Alignment = when (name) {
 internal val ColumnPreview: PreviewRenderer = { node, slots ->
     Column(
         verticalArrangement = verticalArrangement(
-            enumOf(node.properties, "verticalArrangement", "top")
+            node.properties.enumValue("verticalArrangement", "top")
         ),
         horizontalAlignment = horizontalAlignment(
-            enumOf(node.properties, "horizontalAlignment", "start")
+            node.properties.enumValue("horizontalAlignment", "start")
         ),
-    ) { slots(io.github.chandu4221.designode.domain.model.SlotId("content")) }
+    ) { slots(SlotId("content")) }
 }
 
 internal val RowPreview: PreviewRenderer = { node, slots ->
     Row(
         horizontalArrangement = horizontalArrangement(
-            enumOf(node.properties, "horizontalArrangement", "start")
+            node.properties.enumValue("horizontalArrangement", "start")
         ),
         verticalAlignment = verticalAlignment(
-            enumOf(node.properties, "verticalAlignment", "top")
+            node.properties.enumValue("verticalAlignment", "top")
         ),
-    ) { slots(io.github.chandu4221.designode.domain.model.SlotId("content")) }
+    ) { slots(SlotId("content")) }
 }
 
 internal val BoxPreview: PreviewRenderer = { node, slots ->
     Box(
         contentAlignment = boxAlignment(
-            enumOf(node.properties, "contentAlignment", "topStart")
+            node.properties.enumValue("contentAlignment", "topStart")
         ),
         modifier = Modifier.fillMaxSize(),
-    ) { slots(io.github.chandu4221.designode.domain.model.SlotId("content")) }
+    ) { slots(SlotId("content")) }
 }
 
 fun layoutRenderers(): Map<ComponentTypeId, PreviewRenderer> = mapOf(

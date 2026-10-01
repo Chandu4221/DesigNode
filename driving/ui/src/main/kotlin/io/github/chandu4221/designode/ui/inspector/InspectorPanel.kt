@@ -1,53 +1,33 @@
 package io.github.chandu4221.designode.ui.inspector
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.chandu4221.designode.domain.model.AtomicNode
-import io.github.chandu4221.designode.domain.model.NodeId
-import io.github.chandu4221.designode.domain.model.PropertyKey
-import io.github.chandu4221.designode.domain.model.Value
-import io.github.chandu4221.designode.domain.model.VariantId
+import io.github.chandu4221.designode.domain.model.*
 import io.github.chandu4221.designode.domain.spec.ComponentSpec
+import io.github.chandu4221.designode.domain.spec.SlotSpec
+import io.github.chandu4221.designode.ui.palette.iconFor
 
 @Composable
 fun InspectorPanel(
     selected: AtomicNode?,
     spec: ComponentSpec?,
     rootId: NodeId,
+    specLookup: (ComponentTypeId) -> ComponentSpec?,
     onVariantChanged: (NodeId, VariantId?) -> Unit,
     onPropertyChanged: (NodeId, PropertyKey, Value?) -> Unit,
     onRemove: (NodeId) -> Unit,
+    onNodeSelected: (NodeId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -60,9 +40,11 @@ fun InspectorPanel(
                 node = selected,
                 spec = spec,
                 canDelete = selected.id != rootId,
+                specLookup = specLookup,
                 onVariantChanged = onVariantChanged,
                 onPropertyChanged = onPropertyChanged,
                 onRemove = onRemove,
+                onNodeSelected = onNodeSelected,
             )
         }
     }
@@ -84,9 +66,11 @@ private fun InspectorContent(
     node: AtomicNode,
     spec: ComponentSpec,
     canDelete: Boolean,
+    specLookup: (ComponentTypeId) -> ComponentSpec?,
     onVariantChanged: (NodeId, VariantId?) -> Unit,
     onPropertyChanged: (NodeId, PropertyKey, Value?) -> Unit,
     onRemove: (NodeId) -> Unit,
+    onNodeSelected: (NodeId?) -> Unit,
 ) {
     var tab by remember { mutableStateOf(0) }
 
@@ -113,7 +97,13 @@ private fun InspectorContent(
         }
 
         when (tab) {
-            0 -> SlotsPlaceholder()
+            0 -> SlotsTab(
+                spec = spec,
+                node = node,
+                specLookup = specLookup,
+                onNodeSelected = onNodeSelected,
+            )
+
             1 -> PropertiesTab(
                 spec = spec,
                 node = node,
@@ -253,13 +243,145 @@ private fun PropertiesTab(
     }
 }
 
+// ─────────────────────────────────────────────────────
+// Slots tab
+// ─────────────────────────────────────────────────────
+
 @Composable
-private fun SlotsPlaceholder() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun SlotsTab(
+    spec: ComponentSpec,
+    node: AtomicNode,
+    specLookup: (ComponentTypeId) -> ComponentSpec?,
+    onNodeSelected: (NodeId?) -> Unit,
+) {
+    if (spec.slots.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                text = "This component has no slots",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        spec.slots.forEach { slotSpec ->
+            val children = node.slots[slotSpec.id]?.nodes().orEmpty()
+            SlotSection(
+                slotSpec = slotSpec,
+                children = children,
+                specLookup = specLookup,
+                onChildClick = onNodeSelected,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SlotSection(
+    slotSpec: SlotSpec,
+    children: List<AtomicNode>,
+    specLookup: (ComponentTypeId) -> ComponentSpec?,
+    onChildClick: (NodeId?) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = slotSpec.label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = cardinalitySummary(slotSpec, children.size),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        Spacer(Modifier.padding(top = 4.dp))
+
+        if (children.isEmpty()) {
+            EmptySlotHint(slotSpec)
+        } else {
+            children.forEach { child ->
+                SlotChildRow(
+                    child = child,
+                    label = specLookup(child.type)?.label ?: child.type.value,
+                    onClick = { onChildClick(child.id) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptySlotHint(slotSpec: SlotSpec) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(6.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Text(
-            text = "Slots view — coming next",
+            text = "Empty — drop a component here",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
         )
     }
+}
+
+@Composable
+private fun SlotChildRow(
+    child: AtomicNode,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(6.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = iconFor(child.type.value),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private fun cardinalitySummary(slot: SlotSpec, current: Int): String = when (val c = slot.cardinality) {
+    Cardinality.ZeroOrOne -> "$current/1"
+    Cardinality.ExactlyOne -> "$current/1"
+    Cardinality.ZeroOrMany -> current.toString()
+    Cardinality.OneOrMany -> "$current (min 1)"
+    is Cardinality.Range -> "$current/${c.max}"
 }

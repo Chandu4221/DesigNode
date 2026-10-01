@@ -17,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.chandu4221.designode.domain.model.AtomicNode
+import io.github.chandu4221.designode.domain.model.NodeId
 import io.github.chandu4221.designode.domain.model.nodes
 import io.github.chandu4221.designode.ui.canvas.CanvasPanel
 import io.github.chandu4221.designode.ui.canvas.PreviewRenderersRegistry
@@ -56,9 +58,11 @@ fun App(viewModel: EditorViewModel) {
                         selected = selectedNode,
                         spec = selectedSpec,
                         rootId = state.root.id,
+                        specLookup = viewModel::spec,
                         onVariantChanged = viewModel::updateVariant,
                         onPropertyChanged = viewModel::updateProperty,
                         onRemove = viewModel::removeNode,
+                        onNodeSelected = viewModel::selectNode,
                         modifier = Modifier.width(280.dp),
                     )
                 }
@@ -86,13 +90,7 @@ private fun TopBar() {
     }
 }
 
-/**
- * Walks the tree to find the node with the given ID. Local helper — the
- * full-tree search lives in NodeTree but the UI only holds a snapshot.
- */
-private fun io.github.chandu4221.designode.domain.model.AtomicNode.findNode(
-    id: io.github.chandu4221.designode.domain.model.NodeId,
-): io.github.chandu4221.designode.domain.model.AtomicNode? {
+private fun AtomicNode.findNode(id: NodeId): AtomicNode? {
     if (this.id == id) return this
     slots.values.forEach { content ->
         content.nodes().forEach { child ->

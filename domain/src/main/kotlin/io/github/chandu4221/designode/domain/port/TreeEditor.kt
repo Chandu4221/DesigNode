@@ -1,5 +1,6 @@
 package io.github.chandu4221.designode.domain.port
 
+import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.ModifierToken
 import io.github.chandu4221.designode.domain.model.NodeId
@@ -29,6 +30,17 @@ interface TreeEditor {
         modifiers: List<ModifierToken> = emptyList(),
         index: Int? = null,
     ): Result<NodeId>
+
+    /**
+     * Inserts an existing [node] subtree into [slotId] of [parentId] at optional [index].
+     * Preserves the node's existing ID, properties, modifiers, and child slots.
+     */
+    fun insertSubtree(
+        parentId: NodeId,
+        slotId: SlotId,
+        node: AtomicNode,
+        index: Int? = null,
+    ): Result<Unit>
 
     /** Removes [nodeId] and its subtree. Cannot remove the root. */
     fun remove(nodeId: NodeId): Result<Unit>

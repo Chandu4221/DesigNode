@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +30,8 @@ fun InspectorPanel(
     onPropertyChanged: (NodeId, PropertyKey, Value?) -> Unit,
     onRemove: (NodeId) -> Unit,
     onNodeSelected: (NodeId?) -> Unit,
+    onCopy: () -> Unit = {},
+    onDuplicate: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -45,6 +49,8 @@ fun InspectorPanel(
                 onPropertyChanged = onPropertyChanged,
                 onRemove = onRemove,
                 onNodeSelected = onNodeSelected,
+                onCopy = onCopy,
+                onDuplicate = onDuplicate,
             )
         }
     }
@@ -71,6 +77,8 @@ private fun InspectorContent(
     onPropertyChanged: (NodeId, PropertyKey, Value?) -> Unit,
     onRemove: (NodeId) -> Unit,
     onNodeSelected: (NodeId?) -> Unit,
+    onCopy: () -> Unit,
+    onDuplicate: () -> Unit,
 ) {
     var tab by remember { mutableStateOf(0) }
 
@@ -81,6 +89,8 @@ private fun InspectorContent(
             canDelete = canDelete,
             onVariantChanged = onVariantChanged,
             onRemove = onRemove,
+            onCopy = onCopy,
+            onDuplicate = onDuplicate,
         )
 
         PrimaryTabRow(selectedTabIndex = tab) {
@@ -120,6 +130,8 @@ private fun InspectorHeader(
     canDelete: Boolean,
     onVariantChanged: (NodeId, VariantId?) -> Unit,
     onRemove: (NodeId) -> Unit,
+    onCopy: () -> Unit,
+    onDuplicate: () -> Unit,
 ) {
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         Row(
@@ -135,12 +147,34 @@ private fun InspectorHeader(
             )
             if (canDelete) {
                 IconButton(
+                    onClick = onCopy,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy (Ctrl+C)",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(
+                    onClick = onDuplicate,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CopyAll,
+                        contentDescription = "Duplicate (Ctrl+D)",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(
                     onClick = { onRemove(node.id) },
                     modifier = Modifier.size(32.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = "Delete (Del)",
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.error,
                     )

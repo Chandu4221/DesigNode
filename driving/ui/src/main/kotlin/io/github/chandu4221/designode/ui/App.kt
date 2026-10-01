@@ -1,5 +1,6 @@
 package io.github.chandu4221.designode.ui
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Save
@@ -29,6 +32,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.NodeId
@@ -53,6 +66,11 @@ fun App(viewModel: EditorViewModel) {
     val state by viewModel.state.collectAsState()
     val projectList by viewModel.projectList.collectAsState()
     val renderers = remember { PreviewRenderersRegistry.build() }
+    val focusRequester = remember { FocusRequester() }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     val selectedNode = state.selectedId?.let { state.root.findNode(it) }
     val selectedSpec = selectedNode?.let { viewModel.spec(it.type) }
@@ -65,14 +83,86 @@ fun App(viewModel: EditorViewModel) {
         animate = true,
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { keyEvent ->
+                    if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
+                    val isCtrlOrMeta = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+                    when {
+                        isCtrlOrMeta && keyEvent.isShiftPressed && keyEvent.key == Key.Z -> {
+                            viewModel.redo()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.Y -> {
+                            viewModel.redo()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.Z -> {
+                            viewModel.undo()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.C -> {
+                            viewModel.copySelected()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.V -> {
+                            viewModel.paste()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.D -> {
+                            viewModel.duplicateSelected()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.S -> {
+                            viewModel.save()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.N -> {
+                            viewModel.newProject()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.O -> {
+                            viewModel.openProjectPicker()
+                            true
+                        }
+                        isCtrlOrMeta && keyEvent.key == Key.E -> {
+                            viewModel.openExportDialog()
+                            true
+                        }
+                        keyEvent.key == Key.Escape -> {
+                            when {
+                                state.exportDialogOpen -> viewModel.closeExportDialog()
+                                state.projectPickerOpen -> viewModel.closeProjectPicker()
+                                state.themeDialogOpen -> viewModel.closeThemeDialog()
+                                else -> viewModel.deselect()
+                            }
+                            true
+                        }
+                        keyEvent.key == Key.Delete || keyEvent.key == Key.Backspace -> {
+                            val sel = state.selectedId
+                            if (sel != null && sel != state.root.id) {
+                                viewModel.removeNode(sel)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        else -> false
+                    }
+                },
             color = MaterialTheme.colorScheme.background,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 TopBar(
                     projectName = state.projectName,
                     saveStatus = state.saveStatus,
+                    canUndo = state.canUndo,
+                    canRedo = state.canRedo,
                     isDark = state.theme.isDark,
+                    onUndo = viewModel::undo,
+                    onRedo = viewModel::redo,
                     onToggleDarkMode = viewModel::toggleThemeDarkMode,
                     onOpenTheme = viewModel::openThemeDialog,
                     onNew = viewModel::newProject,
@@ -107,7 +197,10 @@ fun App(viewModel: EditorViewModel) {
                         hoveredId = state.hoveredId,
                         dropTarget = state.dropTarget,
                         dragType = state.dragType,
-                        onNodeSelected = viewModel::selectNode,
+                        onNodeSelected = { id ->
+                            viewModel.selectNode(id)
+                            focusRequester.requestFocus()
+                        },
                         onNodeHovered = viewModel::hoverNode,
                         modifier = Modifier.weight(1f),
                     )
@@ -119,7 +212,12 @@ fun App(viewModel: EditorViewModel) {
                         onVariantChanged = viewModel::updateVariant,
                         onPropertyChanged = viewModel::updateProperty,
                         onRemove = viewModel::removeNode,
-                        onNodeSelected = viewModel::selectNode,
+                        onNodeSelected = { id ->
+                            viewModel.selectNode(id)
+                            focusRequester.requestFocus()
+                        },
+                        onCopy = viewModel::copySelected,
+                        onDuplicate = viewModel::duplicateSelected,
                         modifier = Modifier.width(280.dp),
                     )
                 }
@@ -159,7 +257,11 @@ fun App(viewModel: EditorViewModel) {
 private fun TopBar(
     projectName: String,
     saveStatus: SaveStatus,
+    canUndo: Boolean,
+    canRedo: Boolean,
     isDark: Boolean,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
     onToggleDarkMode: () -> Unit,
     onOpenTheme: () -> Unit,
     onNew: () -> Unit,
@@ -192,6 +294,21 @@ private fun TopBar(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.width(8.dp))
+            IconButton(onClick = onUndo, enabled = canUndo) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Undo,
+                    contentDescription = "Undo (Ctrl+Z)",
+                    tint = if (canUndo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                )
+            }
+            IconButton(onClick = onRedo, enabled = canRedo) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Redo,
+                    contentDescription = "Redo (Ctrl+Shift+Z)",
+                    tint = if (canRedo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                )
+            }
 
             Spacer(Modifier.weight(1f))
 

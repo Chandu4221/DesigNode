@@ -34,6 +34,9 @@ data class EditorState(
     val themeDialogOpen: Boolean = false,
     val theme: ThemeSpec = ThemeSpec.Default,
     val saveStatus: SaveStatus = SaveStatus.Idle,
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false,
+    val hasClipboard: Boolean = false,
 ) {
     val dropTargetId: NodeId? get() = dropTarget?.nodeId
 }

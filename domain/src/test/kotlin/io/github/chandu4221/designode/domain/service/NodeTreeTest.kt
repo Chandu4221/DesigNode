@@ -106,5 +106,51 @@ class NodeTreeTest {
         tree.updateProperty(id, PropertyKey("text"), Value.Text("hello"))
         assertEquals(Value.Text("hello"), tree.find(id)!!.properties[PropertyKey("text")])
         assertTrue(collected.any { it is NodeEvent.PropertyChanged })
+
+        // No event emitted when value is unchanged
+        val countBefore = collected.size
+        tree.updateProperty(id, PropertyKey("text"), Value.Text("hello"))
+        assertEquals(countBefore, collected.size)
+    }
+
+    @Test
+    fun `insertSubtree restores node with existing id and children`() {
+        val tree = newTree()
+        val child = AtomicNode(
+            id = NodeId("existing-child"),
+            type = textType,
+            properties = mapOf(PropertyKey("text") to Value.Text("preserved")),
+        )
+        val subtree = AtomicNode(
+            id = NodeId("existing-parent"),
+            type = rowType,
+            slots = mapOf(SlotId("content") to SlotContent.One(child)),
+        )
+
+        val result = tree.insertSubtree(tree.root.id, SlotId("content"), subtree)
+        assertTrue(result.isSuccess)
+
+        val foundParent = tree.find(NodeId("existing-parent"))
+        assertEquals(NodeId("existing-parent"), foundParent?.id)
+        val foundChild = tree.find(NodeId("existing-child"))
+        assertEquals(Value.Text("preserved"), foundChild?.properties?.get(PropertyKey("text")))
+    }
+
+    @Test
+    fun `deepCopyWithNewIds generates new unique ids for subtree`() {
+        val child = AtomicNode(id = NodeId("old-child"), type = textType)
+        val parent = AtomicNode(
+            id = NodeId("old-parent"),
+            type = rowType,
+            slots = mapOf(SlotId("content") to SlotContent.One(child)),
+        )
+
+        val idGen = SequentialNodeIdGenerator()
+        val cloned = parent.deepCopyWithNewIds(idGen)
+
+        assertEquals(NodeId("test-0"), cloned.id)
+        val clonedChild = cloned.slots[SlotId("content")]?.nodes()?.first()!!
+        assertEquals(NodeId("test-1"), clonedChild.id)
+        assertEquals(textType, clonedChild.type)
     }
 }

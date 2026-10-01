@@ -5,6 +5,7 @@ import io.github.chandu4221.designode.catalog.Material3Catalog
 import io.github.chandu4221.designode.codegen.ComposeSourceGenerator
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
+import io.github.chandu4221.designode.domain.model.ModifierToken
 import io.github.chandu4221.designode.domain.model.NodeId
 import io.github.chandu4221.designode.domain.model.ProjectId
 import io.github.chandu4221.designode.domain.model.PropertyKey
@@ -24,6 +25,11 @@ import io.github.chandu4221.designode.domain.service.ProjectSession
 import io.github.chandu4221.designode.domain.service.SlotValidator
 import io.github.chandu4221.designode.domain.spec.ComponentSpec
 import io.github.chandu4221.designode.ui.canvas.HitTestRegistry
+import io.github.chandu4221.designode.domain.event.NodeEvent
+import io.github.chandu4221.designode.domain.model.deepCopyWithNewIds
+import io.github.chandu4221.designode.domain.model.nodes
+import io.github.chandu4221.designode.ui.undo.UndoAction
+import io.github.chandu4221.designode.ui.undo.UndoManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -41,7 +47,89 @@ class EditorViewModel(
 
     private val registry = Material3Catalog.registry()
     private val validator = SlotValidator(registry)
-    private val publisher = NodeEventPublisher { /* no subscribers yet */ }
+    val undoManager = UndoManager()
+    private var clipboardNode: AtomicNode? = null
+
+    private val publisher = NodeEventPublisher { event ->
+        if (undoManager.isPerformingUndoRedo) return@NodeEventPublisher
+        val activeScreen = session.activeScreenId
+        val tree = session.tree(activeScreen) ?: return@NodeEventPublisher
+
+        val action = when (event) {
+            is NodeEvent.NodeInserted -> UndoAction(
+                screenId = activeScreen,
+                undo = {
+                    session.tree(activeScreen)?.remove(event.node.id)
+                    if (_state.value.selectedId == event.node.id) {
+                        _state.update { it.copy(selectedId = null) }
+                    }
+                },
+                redo = {
+                    session.tree(activeScreen)?.insertSubtree(event.parentId, event.slotId, event.node, event.index)
+                    _state.update { it.copy(selectedId = event.node.id) }
+                },
+            )
+            is NodeEvent.NodeRemoved -> UndoAction(
+                screenId = activeScreen,
+                undo = {
+                    session.tree(activeScreen)?.insertSubtree(event.parentId, event.slotId, event.node, event.index)
+                    _state.update { it.copy(selectedId = event.node.id) }
+                },
+                redo = {
+                    session.tree(activeScreen)?.remove(event.node.id)
+                    if (_state.value.selectedId == event.node.id) {
+                        _state.update { it.copy(selectedId = null) }
+                    }
+                },
+            )
+            is NodeEvent.NodeMoved -> UndoAction(
+                screenId = activeScreen,
+                undo = {
+                    session.tree(activeScreen)?.move(event.nodeId, event.fromParentId, event.fromSlotId, event.fromIndex)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+                redo = {
+                    session.tree(activeScreen)?.move(event.nodeId, event.toParentId, event.toSlotId, event.toIndex)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+            )
+            is NodeEvent.PropertyChanged -> UndoAction(
+                screenId = activeScreen,
+                undo = {
+                    session.tree(activeScreen)?.updateProperty(event.nodeId, event.key, event.oldValue)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+                redo = {
+                    session.tree(activeScreen)?.updateProperty(event.nodeId, event.key, event.newValue)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+            )
+            is NodeEvent.VariantChanged -> UndoAction(
+                screenId = activeScreen,
+                undo = {
+                    session.tree(activeScreen)?.updateVariant(event.nodeId, event.oldVariant)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+                redo = {
+                    session.tree(activeScreen)?.updateVariant(event.nodeId, event.newVariant)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+            )
+            is NodeEvent.ModifiersChanged -> UndoAction(
+                screenId = activeScreen,
+                undo = {
+                    session.tree(activeScreen)?.updateModifiers(event.nodeId, event.oldModifiers)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+                redo = {
+                    session.tree(activeScreen)?.updateModifiers(event.nodeId, event.newModifiers)
+                    _state.update { it.copy(selectedId = event.nodeId) }
+                },
+            )
+        }
+        undoManager.record(action)
+        updateUndoRedoState()
+    }
     private val projectPublisher = ProjectEventPublisher { /* no subscribers yet */ }
     private val idGenerator = RandomNodeIdGenerator
     private val sourceGenerator = ComposeSourceGenerator()
@@ -126,6 +214,120 @@ class EditorViewModel(
             syncRoot()
             markDirty()
         }
+    }
+
+    fun updateModifiers(id: NodeId, modifiers: List<ModifierToken>) {
+        currentTree.updateModifiers(id, modifiers)
+        syncRoot()
+        markDirty()
+    }
+
+    fun undo() {
+        val action = undoManager.undo() ?: return
+        if (session.activeScreenId != action.screenId) {
+            session.switchScreen(action.screenId)
+        }
+        syncRoot()
+        markDirty()
+        updateUndoRedoState()
+    }
+
+    fun redo() {
+        val action = undoManager.redo() ?: return
+        if (session.activeScreenId != action.screenId) {
+            session.switchScreen(action.screenId)
+        }
+        syncRoot()
+        markDirty()
+        updateUndoRedoState()
+    }
+
+    fun copySelected() {
+        val selectedId = _state.value.selectedId ?: return
+        if (selectedId == currentTree.root.id) return
+        val node = currentTree.find(selectedId) ?: return
+        clipboardNode = node
+        updateUndoRedoState()
+    }
+
+    fun duplicateSelected() {
+        val selectedId = _state.value.selectedId ?: return
+        if (selectedId == currentTree.root.id) return
+        val node = currentTree.find(selectedId) ?: return
+        val parent = currentTree.parentOf(selectedId) ?: return
+        val slotId = currentTree.slotOf(parent.id, selectedId) ?: return
+
+        val siblings = parent.slots[slotId]?.nodes().orEmpty()
+        val currentIndex = siblings.indexOfFirst { it.id == selectedId }
+        val insertIndex = if (currentIndex >= 0) currentIndex + 1 else null
+
+        val cloned = node.deepCopyWithNewIds(idGenerator)
+        currentTree.insertSubtree(parent.id, slotId, cloned, insertIndex).onSuccess {
+            _state.update { it.copy(selectedId = cloned.id) }
+            syncRoot()
+            markDirty()
+        }
+    }
+
+    fun paste() {
+        val clip = clipboardNode ?: return
+        val cloned = clip.deepCopyWithNewIds(idGenerator)
+        val selectedId = _state.value.selectedId
+
+        var targetParentId: NodeId? = null
+        var targetSlotId: SlotId? = null
+        var insertIndex: Int? = null
+
+        if (selectedId != null) {
+            val selectedNode = currentTree.find(selectedId)
+            if (selectedNode != null) {
+                val spec = registry.spec(selectedNode.type)
+                val directSlot = spec?.slots?.firstOrNull { clip.type in it.accepts }
+                    ?: spec?.slots?.firstOrNull { it.isDefault }
+                    ?: spec?.slots?.singleOrNull()
+
+                if (directSlot != null && validator.canDrop(selectedNode, directSlot.id, cloned).isSuccess) {
+                    targetParentId = selectedNode.id
+                    targetSlotId = directSlot.id
+                } else {
+                    val parent = currentTree.parentOf(selectedId)
+                    val slot = if (parent != null) currentTree.slotOf(parent.id, selectedId) else null
+                    if (parent != null && slot != null && validator.canDrop(parent, slot, cloned).isSuccess) {
+                        targetParentId = parent.id
+                        targetSlotId = slot
+                        val siblings = parent.slots[slot]?.nodes().orEmpty()
+                        val idx = siblings.indexOfFirst { it.id == selectedId }
+                        insertIndex = if (idx >= 0) idx + 1 else null
+                    }
+                }
+            }
+        }
+
+        // Fallback: paste into root Scaffold's content container
+        if (targetParentId == null || targetSlotId == null) {
+            val rootScaffold = currentTree.root
+            val contentNode = rootScaffold.slots[SlotId("content")]?.nodes()?.firstOrNull()
+            if (contentNode != null) {
+                val spec = registry.spec(contentNode.type)
+                val slot = spec?.slots?.firstOrNull { it.isDefault }?.id ?: SlotId("children")
+                if (validator.canDrop(contentNode, slot, cloned).isSuccess) {
+                    targetParentId = contentNode.id
+                    targetSlotId = slot
+                }
+            }
+        }
+
+        if (targetParentId != null && targetSlotId != null) {
+            currentTree.insertSubtree(targetParentId, targetSlotId, cloned, insertIndex).onSuccess {
+                _state.update { it.copy(selectedId = cloned.id) }
+                syncRoot()
+                markDirty()
+            }
+        }
+    }
+
+    fun deselect() {
+        selectNode(null)
     }
 
     // ─────────────────────────────────────────────────────
@@ -238,6 +440,8 @@ class EditorViewModel(
     // ─────────────────────────────────────────────────────
 
     fun newProject() {
+        undoManager.clear()
+        clipboardNode = null
         session = createInitialSession()
         _state.update {
             it.copy(
@@ -249,6 +453,9 @@ class EditorViewModel(
                 hoveredId = null,
                 theme = session.theme,
                 saveStatus = SaveStatus.Idle,
+                canUndo = false,
+                canRedo = false,
+                hasClipboard = false,
             )
         }
     }
@@ -286,6 +493,8 @@ class EditorViewModel(
         scope.launch {
             repository.load(id)
                 .onSuccess { project ->
+                    undoManager.clear()
+                    clipboardNode = null
                     session = ProjectSession.fromProject(
                         project = project,
                         registry = registry,
@@ -305,6 +514,9 @@ class EditorViewModel(
                             theme = session.theme,
                             projectPickerOpen = false,
                             saveStatus = SaveStatus.Idle,
+                            canUndo = false,
+                            canRedo = false,
+                            hasClipboard = false,
                         )
                     }
                 }
@@ -467,6 +679,16 @@ class EditorViewModel(
         return targetSpec.slots.singleOrNull()?.id
     }
 
+    private fun updateUndoRedoState() {
+        _state.update {
+            it.copy(
+                canUndo = undoManager.canUndo,
+                canRedo = undoManager.canRedo,
+                hasClipboard = clipboardNode != null,
+            )
+        }
+    }
+
     private fun syncRoot() {
         _state.update {
             it.copy(
@@ -475,6 +697,9 @@ class EditorViewModel(
                 screens = computeScreenTabs(),
                 activeScreenId = session.activeScreenId,
                 theme = session.theme,
+                canUndo = undoManager.canUndo,
+                canRedo = undoManager.canRedo,
+                hasClipboard = clipboardNode != null,
             )
         }
     }

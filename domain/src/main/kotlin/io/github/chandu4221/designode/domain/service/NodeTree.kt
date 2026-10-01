@@ -56,8 +56,14 @@ class NodeTree(
 
         validator.canDrop(parent, slotId, child).onFailure { return Result.failure(it) }
 
+        var actualIndex = 0
         root = rewrite(root, parentId) { p ->
             val existing = p.slots[slotId]?.nodes().orEmpty()
+            actualIndex = if (index != null && index in 0..existing.size) {
+                index
+            } else {
+                existing.size
+            }
             val updated = if (index != null && index in 0..existing.size) {
                 existing.toMutableList().apply { add(index, child) }
             } else {
@@ -71,10 +77,48 @@ class NodeTree(
                 node = child,
                 parentId = parentId,
                 slotId = slotId,
-                index = index ?: (root.slots[slotId]?.nodes()?.size?.minus(1) ?: 0),
+                index = actualIndex,
             )
         )
         return Result.success(child.id)
+    }
+
+    override fun insertSubtree(
+        parentId: NodeId,
+        slotId: SlotId,
+        node: AtomicNode,
+        index: Int?,
+    ): Result<Unit> {
+        val parent = find(parentId)
+            ?: return failure("Parent not found: ${parentId.value}")
+
+        validator.canDrop(parent, slotId, node).onFailure { return Result.failure(it) }
+
+        var actualIndex = 0
+        root = rewrite(root, parentId) { p ->
+            val existing = p.slots[slotId]?.nodes().orEmpty()
+            actualIndex = if (index != null && index in 0..existing.size) {
+                index
+            } else {
+                existing.size
+            }
+            val updated = if (index != null && index in 0..existing.size) {
+                existing.toMutableList().apply { add(index, node) }
+            } else {
+                existing + node
+            }
+            p.copy(slots = p.slots + (slotId to SlotContent.of(updated)))
+        }
+
+        publisher.publish(
+            NodeEvent.NodeInserted(
+                node = node,
+                parentId = parentId,
+                slotId = slotId,
+                index = actualIndex,
+            )
+        )
+        return Result.success(Unit)
     }
 
     override fun remove(nodeId: NodeId): Result<Unit> {
@@ -177,6 +221,7 @@ class NodeTree(
     override fun updateProperty(nodeId: NodeId, key: PropertyKey, value: Value?): Result<Unit> {
         val node = find(nodeId) ?: return failure("Node not found")
         val old = node.properties[key]
+        if (old == value) return Result.success(Unit)
 
         root = rewrite(root, nodeId) { n ->
             val updated = if (value == null) n.properties - key else n.properties + (key to value)
@@ -190,6 +235,7 @@ class NodeTree(
     override fun updateVariant(nodeId: NodeId, variant: VariantId?): Result<Unit> {
         val node = find(nodeId) ?: return failure("Node not found")
         val old = node.variant
+        if (old == variant) return Result.success(Unit)
 
         root = rewrite(root, nodeId) { it.copy(variant = variant) }
 
@@ -200,6 +246,7 @@ class NodeTree(
     override fun updateModifiers(nodeId: NodeId, modifiers: List<ModifierToken>): Result<Unit> {
         val node = find(nodeId) ?: return failure("Node not found")
         val old = node.modifiers
+        if (old == modifiers) return Result.success(Unit)
 
         root = rewrite(root, nodeId) { it.copy(modifiers = modifiers) }
 

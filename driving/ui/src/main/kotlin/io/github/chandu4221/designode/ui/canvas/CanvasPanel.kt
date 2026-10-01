@@ -3,12 +3,8 @@ package io.github.chandu4221.designode.ui.canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -61,7 +57,7 @@ fun CanvasPanel(
         modifier = modifier
             .fillMaxHeight()
             .clipToBounds()
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .background(Color(0xFF181210))
             .onGloballyPositioned { coordinates ->
                 transformState.containerSize = coordinates.size
             }
@@ -162,25 +158,106 @@ private fun EmptyCanvasHint() {
 
 @Composable
 private fun DeviceFrame(content: @Composable () -> Unit) {
+    // Outer phone bezel
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .clip(RoundedCornerShape(36.dp))
+            .background(Color(0xFF1E1613))
             .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(24.dp),
+                width = 3.dp,
+                color = Color(0xFF382922),
+                shape = RoundedCornerShape(36.dp),
             )
-            .padding(4.dp),
+            .padding(5.dp),
     ) {
+        // Inner screen surface
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(31.dp))
                 .background(MaterialTheme.colorScheme.background),
         ) {
             content()
+
+            // Realistic Device Top Status Bar
+            PhoneStatusBar(modifier = Modifier.align(Alignment.TopCenter))
+
+            // Realistic Bottom Home Indicator Line
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp)
+                    .width(76.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f))
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhoneStatusBar(modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(26.dp)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = "12:30",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+        )
+        // Center Camera Punch-hole
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF0C0908))
+                .border(1.dp, Color(0xFF281E19), CircleShape)
+        )
+        // Right System Indicators: Signal & Battery
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            // Signal Bars
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(1.5.dp),
+            ) {
+                Box(Modifier.width(2.5.dp).height(4.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)))
+                Box(Modifier.width(2.5.dp).height(7.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)))
+                Box(Modifier.width(2.5.dp).height(10.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)))
+            }
+            // Battery icon (pill + cap)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .width(18.dp)
+                        .height(9.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
+                        .padding(1.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(0.85f)
+                            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), RoundedCornerShape(1.dp))
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .width(1.5.dp)
+                        .height(4.dp)
+                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), RoundedCornerShape(topEnd = 1.dp, bottomEnd = 1.dp))
+                )
+            }
         }
     }
 }

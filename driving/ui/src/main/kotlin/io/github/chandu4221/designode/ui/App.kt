@@ -155,9 +155,10 @@ fun App(viewModel: EditorViewModel) {
             color = MaterialTheme.colorScheme.background,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                TopBar(
+                UnifiedTopBar(
                     projectName = state.projectName,
-                    saveStatus = state.saveStatus,
+                    screens = state.screens,
+                    activeScreenId = state.activeScreenId,
                     canUndo = state.canUndo,
                     canRedo = state.canRedo,
                     isDark = state.theme.isDark,
@@ -165,21 +166,20 @@ fun App(viewModel: EditorViewModel) {
                     onRedo = viewModel::redo,
                     onToggleDarkMode = viewModel::toggleThemeDarkMode,
                     onOpenTheme = viewModel::openThemeDialog,
-                    onNew = viewModel::newProject,
-                    onOpen = viewModel::openProjectPicker,
-                    onSave = viewModel::save,
-                    onExport = viewModel::openExportDialog,
-                )
-                io.github.chandu4221.designode.ui.screens.ScreenTabBar(
-                    screens = state.screens,
-                    activeScreenId = state.activeScreenId,
                     onSwitchScreen = viewModel::switchScreen,
                     onAddScreen = { viewModel.addScreen() },
                     onRenameScreen = viewModel::renameScreen,
                     onRemoveScreen = viewModel::removeScreen,
                     onSetStartScreen = viewModel::setStartScreen,
+                    onOpen = viewModel::openProjectPicker,
+                    onSave = viewModel::save,
+                    onExport = viewModel::openExportDialog,
                 )
-                Row(modifier = Modifier.fillMaxSize()) {
+                Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                    ActivityBar(
+                        activeItem = ActivityBarItem.EXPLORER,
+                        onOpenTheme = viewModel::openThemeDialog,
+                    )
                     PalettePanel(
                         specs = viewModel.specs,
                         draggingType = state.dragType,
@@ -187,7 +187,7 @@ fun App(viewModel: EditorViewModel) {
                         onDragMove = viewModel::updateDragPosition,
                         onDragEnd = viewModel::commitDrag,
                         onDragCancel = viewModel::cancelDrag,
-                        modifier = Modifier.width(240.dp),
+                        modifier = Modifier.width(220.dp),
                     )
                     CanvasPanel(
                         root = state.root,
@@ -223,6 +223,9 @@ fun App(viewModel: EditorViewModel) {
                         modifier = Modifier.width(280.dp),
                     )
                 }
+                StatusBar(
+                    saveStatus = state.saveStatus,
+                )
             }
         }
 
@@ -255,131 +258,7 @@ fun App(viewModel: EditorViewModel) {
     }
 }
 
-@Composable
-private fun TopBar(
-    projectName: String,
-    saveStatus: SaveStatus,
-    canUndo: Boolean,
-    canRedo: Boolean,
-    isDark: Boolean,
-    onUndo: () -> Unit,
-    onRedo: () -> Unit,
-    onToggleDarkMode: () -> Unit,
-    onOpenTheme: () -> Unit,
-    onNew: () -> Unit,
-    onOpen: () -> Unit,
-    onSave: () -> Unit,
-    onExport: () -> Unit,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "DesigNode",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(16.dp))
-            Text(
-                text = "·",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(16.dp))
-            Text(
-                text = projectName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.width(8.dp))
-            IconButton(onClick = onUndo, enabled = canUndo) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Undo,
-                    contentDescription = "Undo (Ctrl+Z)",
-                    tint = if (canUndo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                )
-            }
-            IconButton(onClick = onRedo, enabled = canRedo) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Redo,
-                    contentDescription = "Redo (Ctrl+Shift+Z)",
-                    tint = if (canRedo) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                )
-            }
 
-            Spacer(Modifier.weight(1f))
-
-            SaveStatusBadge(saveStatus)
-
-            IconButton(onClick = onToggleDarkMode) {
-                Icon(
-                    imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
-                    contentDescription = if (isDark) "Switch to light mode" else "Switch to dark mode",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onOpenTheme) {
-                Icon(
-                    imageVector = Icons.Default.Palette,
-                    contentDescription = "Theme settings",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onNew) {
-                Icon(
-                    imageVector = Icons.Default.CreateNewFolder,
-                    contentDescription = "New project",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onOpen) {
-                Icon(
-                    imageVector = Icons.Default.FolderOpen,
-                    contentDescription = "Open project",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onSave) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = "Save",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = onExport) {
-                Icon(
-                    imageVector = Icons.Default.Upload,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Export")
-            }
-        }
-    }
-}
-
-@Composable
-private fun SaveStatusBadge(status: SaveStatus) {
-    val (text, color) = when (status) {
-        SaveStatus.Idle -> return
-        SaveStatus.Saving -> "Saving…" to MaterialTheme.colorScheme.onSurfaceVariant
-        SaveStatus.Saved -> "Saved" to MaterialTheme.colorScheme.primary
-        is SaveStatus.Failed -> "Error" to MaterialTheme.colorScheme.error
-    }
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = color,
-        modifier = Modifier.padding(end = 8.dp),
-    )
-}
 
 private fun AtomicNode.findNode(id: NodeId): AtomicNode? {
     if (this.id == id) return this

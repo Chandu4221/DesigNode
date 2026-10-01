@@ -32,7 +32,7 @@ class ThemeViewModelTest {
         val theme = viewModel.state.value.theme
 
         assertEquals(ThemeSpec.Default.seedColor, theme.seedColor)
-        assertEquals(false, theme.isDark)
+        assertEquals(true, theme.isDark)
         assertEquals(0.0, theme.contrastLevel)
         assertEquals("TonalSpot", theme.style)
         assertFalse(viewModel.state.value.themeDialogOpen)
@@ -56,10 +56,10 @@ class ThemeViewModelTest {
         assertEquals(0xFF0061A4L, viewModel.state.value.theme.seedColor)
 
         viewModel.toggleThemeDarkMode()
-        assertTrue(viewModel.state.value.theme.isDark)
+        assertFalse(viewModel.state.value.theme.isDark)
 
         viewModel.toggleThemeDarkMode()
-        assertFalse(viewModel.state.value.theme.isDark)
+        assertTrue(viewModel.state.value.theme.isDark)
 
         viewModel.updateThemeContrast(0.5)
         assertEquals(0.5, viewModel.state.value.theme.contrastLevel)

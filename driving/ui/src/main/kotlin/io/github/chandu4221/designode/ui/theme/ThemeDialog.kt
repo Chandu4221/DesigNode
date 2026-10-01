@@ -26,6 +26,7 @@ import com.materialkolor.PaletteStyle
 import io.github.chandu4221.designode.domain.model.ThemeSpec
 
 val PRESET_SEEDS = listOf(
+    0xFFD97746L to "Terracotta",
     0xFF6750A4L to "Purple",
     0xFF0061A4L to "Blue",
     0xFF006A6AL to "Teal",

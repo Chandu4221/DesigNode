@@ -1,9 +1,11 @@
 package io.github.chandu4221.designode.ui.palette
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -90,15 +93,37 @@ fun PalettePanel(
                             )
                         }
                         if (isExpanded) {
-                            items(familySpecs, key = { it.type.value }) { spec ->
-                                PaletteItem(
-                                    spec = spec,
-                                    isDragging = spec.type == draggingType,
-                                    onDragStart = { onDragStart(spec.type) },
-                                    onDragMove = onDragMove,
-                                    onDragEnd = onDragEnd,
-                                    onDragCancel = onDragCancel,
-                                )
+                            val chunked = familySpecs.chunked(2)
+                            items(chunked, key = { row -> row.joinToString("-") { it.type.value } }) { rowItems ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    PaletteItem(
+                                        spec = rowItems[0],
+                                        isDragging = rowItems[0].type == draggingType,
+                                        onDragStart = { onDragStart(rowItems[0].type) },
+                                        onDragMove = onDragMove,
+                                        onDragEnd = onDragEnd,
+                                        onDragCancel = onDragCancel,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (rowItems.size > 1) {
+                                        PaletteItem(
+                                            spec = rowItems[1],
+                                            isDragging = rowItems[1].type == draggingType,
+                                            onDragStart = { onDragStart(rowItems[1].type) },
+                                            onDragMove = onDragMove,
+                                            onDragEnd = onDragEnd,
+                                            onDragCancel = onDragCancel,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    } else {
+                                        Spacer(Modifier.weight(1f))
+                                    }
+                                }
                             }
                         }
                     }
@@ -110,15 +135,25 @@ fun PalettePanel(
 
 @Composable
 private fun PaletteHeader() {
-    Text(
-        text = "COMPONENTS",
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-    )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "COMPONENTS",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "—",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+        )
+    }
 }
 
 @Composable
@@ -134,15 +169,22 @@ private fun PaletteSearchField(
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             )
         },
         singleLine = true,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(20.dp),
         textStyle = MaterialTheme.typography.bodySmall,
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+        ),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 10.dp, vertical = 6.dp),
     )
 }
 
@@ -159,27 +201,28 @@ private fun FamilyHeader(
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onToggle, modifier = Modifier.size(24.dp)) {
+        IconButton(onClick = onToggle, modifier = Modifier.size(22.dp)) {
             Icon(
                 imageVector = Icons.Default.ExpandMore,
                 contentDescription = if (expanded) "Collapse" else "Expand",
                 modifier = Modifier
-                    .size(18.dp)
+                    .size(16.dp)
                     .rotate(if (expanded) 0f else -90f),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         Text(
             text = family.value,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f).padding(start = 4.dp),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f).padding(start = 2.dp),
         )
         Text(
             text = count.toString(),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(end = 12.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.padding(end = 10.dp),
         )
     }
 }

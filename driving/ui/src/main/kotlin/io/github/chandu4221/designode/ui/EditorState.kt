@@ -5,6 +5,7 @@ import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
 import io.github.chandu4221.designode.domain.model.SlotId
 
+import io.github.chandu4221.designode.domain.model.ScreenId
 import io.github.chandu4221.designode.domain.model.ThemeSpec
 
 /** Represents a resolved drop target node and its specific slot. */
@@ -13,9 +14,17 @@ data class DropTarget(
     val slotId: SlotId,
 )
 
+data class ScreenTab(
+    val id: ScreenId,
+    val name: String,
+    val isStart: Boolean = false,
+)
+
 data class EditorState(
     val root: AtomicNode,
     val projectName: String = "Untitled",
+    val screens: List<ScreenTab> = emptyList(),
+    val activeScreenId: ScreenId? = null,
     val selectedId: NodeId? = null,
     val hoveredId: NodeId? = null,
     val dragType: ComponentTypeId? = null,

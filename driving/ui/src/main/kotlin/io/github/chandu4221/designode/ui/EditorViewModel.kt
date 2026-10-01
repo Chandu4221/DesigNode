@@ -6,20 +6,21 @@ import io.github.chandu4221.designode.codegen.ComposeSourceGenerator
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
-import io.github.chandu4221.designode.domain.model.Project
 import io.github.chandu4221.designode.domain.model.ProjectId
 import io.github.chandu4221.designode.domain.model.PropertyKey
-import io.github.chandu4221.designode.domain.model.Screen
 import io.github.chandu4221.designode.domain.model.ScreenId
 import io.github.chandu4221.designode.domain.model.SlotContent
 import io.github.chandu4221.designode.domain.model.SlotId
+import io.github.chandu4221.designode.domain.model.ThemeSpec
 import io.github.chandu4221.designode.domain.model.Value
 import io.github.chandu4221.designode.domain.model.VariantId
 import io.github.chandu4221.designode.domain.port.NodeEventPublisher
+import io.github.chandu4221.designode.domain.port.ProjectEventPublisher
 import io.github.chandu4221.designode.domain.port.ProjectRepository
 import io.github.chandu4221.designode.domain.port.ProjectSummary
 import io.github.chandu4221.designode.domain.port.RandomNodeIdGenerator
 import io.github.chandu4221.designode.domain.service.NodeTree
+import io.github.chandu4221.designode.domain.service.ProjectSession
 import io.github.chandu4221.designode.domain.service.SlotValidator
 import io.github.chandu4221.designode.domain.spec.ComponentSpec
 import io.github.chandu4221.designode.ui.canvas.HitTestRegistry
@@ -41,6 +42,7 @@ class EditorViewModel(
     private val registry = Material3Catalog.registry()
     private val validator = SlotValidator(registry)
     private val publisher = NodeEventPublisher { /* no subscribers yet */ }
+    private val projectPublisher = ProjectEventPublisher { /* no subscribers yet */ }
     private val idGenerator = RandomNodeIdGenerator
     private val sourceGenerator = ComposeSourceGenerator()
 
@@ -49,21 +51,46 @@ class EditorViewModel(
 
     fun spec(type: ComponentTypeId): ComponentSpec? = registry.spec(type)
 
-    private var currentProjectId: ProjectId = ProjectId.generate()
-    private var currentScreenId: ScreenId = ScreenId.generate()
-    private var tree: NodeTree = NodeTree(
-        registry = registry,
-        validator = validator,
-        publisher = publisher,
-        idGenerator = idGenerator,
-        root = defaultScreen(),
-    )
+    private var session: ProjectSession = createInitialSession()
+    private val currentTree: NodeTree get() = session.activeTree
 
-    private val _state = MutableStateFlow(EditorState(root = tree.root))
+    private val _state = MutableStateFlow(
+        EditorState(
+            root = session.activeTree.root,
+            projectName = session.name,
+            screens = computeScreenTabs(),
+            activeScreenId = session.activeScreenId,
+            theme = session.theme,
+        )
+    )
     val state: StateFlow<EditorState> = _state.asStateFlow()
 
     private val _projectList = MutableStateFlow<List<ProjectSummary>>(emptyList())
     val projectList: StateFlow<List<ProjectSummary>> = _projectList.asStateFlow()
+
+    private fun createInitialSession(): ProjectSession {
+        val s = ProjectSession(
+            projectId = ProjectId.generate(),
+            registry = registry,
+            validator = validator,
+            publisher = publisher,
+            projectPublisher = projectPublisher,
+            idGenerator = idGenerator,
+        )
+        s.addScreen("Main", defaultScreen())
+        return s
+    }
+
+    private fun computeScreenTabs(): List<ScreenTab> {
+        val startId = session.startScreen()
+        return session.screenIds().map { id ->
+            ScreenTab(
+                id = id,
+                name = session.screenName(id) ?: "Screen",
+                isStart = id == startId,
+            )
+        }
+    }
 
     // ─────────────────────────────────────────────────────
     // Selection
@@ -82,19 +109,19 @@ class EditorViewModel(
     // ─────────────────────────────────────────────────────
 
     fun updateVariant(id: NodeId, variant: VariantId?) {
-        tree.updateVariant(id, variant)
+        currentTree.updateVariant(id, variant)
         syncRoot()
         markDirty()
     }
 
     fun updateProperty(id: NodeId, key: PropertyKey, value: Value?) {
-        tree.updateProperty(id, key, value)
+        currentTree.updateProperty(id, key, value)
         syncRoot()
         markDirty()
     }
 
     fun removeNode(id: NodeId) {
-        tree.remove(id).onSuccess {
+        currentTree.remove(id).onSuccess {
             _state.update { it.copy(selectedId = null) }
             syncRoot()
             markDirty()
@@ -124,7 +151,7 @@ class EditorViewModel(
 
         if (draggedType == null || target == null) return
 
-        tree.insert(target.nodeId, target.slotId, draggedType).onSuccess { newId ->
+        currentTree.insert(target.nodeId, target.slotId, draggedType).onSuccess { newId ->
             _state.update { it.copy(selectedId = newId) }
             syncRoot()
             markDirty()
@@ -136,45 +163,99 @@ class EditorViewModel(
     }
 
     // ─────────────────────────────────────────────────────
+    // Screen Management
+    // ─────────────────────────────────────────────────────
+
+    fun addScreen(name: String? = null) {
+        val nextNum = session.screenIds().size + 1
+        val screenName = name ?: "Screen $nextNum"
+        val newRoot = defaultScreen()
+        session.addScreen(screenName, newRoot).onSuccess { newId ->
+            session.switchScreen(newId)
+            _state.update {
+                it.copy(
+                    root = session.activeTree.root,
+                    activeScreenId = session.activeScreenId,
+                    screens = computeScreenTabs(),
+                    selectedId = null,
+                    hoveredId = null,
+                    dropTarget = null,
+                )
+            }
+            markDirty()
+        }
+    }
+
+    fun switchScreen(id: ScreenId) {
+        session.switchScreen(id).onSuccess {
+            _state.update {
+                it.copy(
+                    root = session.activeTree.root,
+                    activeScreenId = session.activeScreenId,
+                    screens = computeScreenTabs(),
+                    selectedId = null,
+                    hoveredId = null,
+                    dropTarget = null,
+                )
+            }
+        }
+    }
+
+    fun renameScreen(id: ScreenId, newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) return
+        session.renameScreen(id, trimmed).onSuccess {
+            syncRoot()
+            markDirty()
+        }
+    }
+
+    fun removeScreen(id: ScreenId) {
+        session.removeScreen(id).onSuccess {
+            _state.update {
+                it.copy(
+                    root = session.activeTree.root,
+                    activeScreenId = session.activeScreenId,
+                    screens = computeScreenTabs(),
+                    selectedId = null,
+                    hoveredId = null,
+                    dropTarget = null,
+                )
+            }
+            markDirty()
+        }
+    }
+
+    fun setStartScreen(id: ScreenId) {
+        session.setStartScreen(id).onSuccess {
+            syncRoot()
+            markDirty()
+        }
+    }
+
+    // ─────────────────────────────────────────────────────
     // Project lifecycle
     // ─────────────────────────────────────────────────────
 
     fun newProject() {
-        currentProjectId = ProjectId.generate()
-        currentScreenId = ScreenId.generate()
-        tree = NodeTree(
-            registry = registry,
-            validator = validator,
-            publisher = publisher,
-            idGenerator = idGenerator,
-            root = defaultScreen(),
-        )
+        session = createInitialSession()
         _state.update {
             it.copy(
-                root = tree.root,
-                projectName = "Untitled",
+                root = session.activeTree.root,
+                projectName = session.name,
+                screens = computeScreenTabs(),
+                activeScreenId = session.activeScreenId,
                 selectedId = null,
                 hoveredId = null,
-                theme = io.github.chandu4221.designode.domain.model.ThemeSpec.Default,
+                theme = session.theme,
                 saveStatus = SaveStatus.Idle,
             )
         }
     }
 
     fun save() {
-        val project = Project(
-            id = currentProjectId,
-            name = _state.value.projectName,
-            screens = mapOf(
-                currentScreenId to Screen(
-                    id = currentScreenId,
-                    name = "Main",
-                    root = tree.root,
-                )
-            ),
-            startScreenId = currentScreenId,
-            theme = _state.value.theme,
-        )
+        session.theme = _state.value.theme
+        val project = session.snapshot()
         scope.launch {
             _state.update { it.copy(saveStatus = SaveStatus.Saving) }
             repository.save(project)
@@ -205,23 +286,23 @@ class EditorViewModel(
         scope.launch {
             repository.load(id)
                 .onSuccess { project ->
-                    val screen = project.screens.values.firstOrNull() ?: return@onSuccess
-                    currentProjectId = project.id
-                    currentScreenId = screen.id
-                    tree = NodeTree(
+                    session = ProjectSession.fromProject(
+                        project = project,
                         registry = registry,
                         validator = validator,
                         publisher = publisher,
+                        projectPublisher = projectPublisher,
                         idGenerator = idGenerator,
-                        root = screen.root,
                     )
                     _state.update { state ->
                         state.copy(
-                            root = tree.root,
-                            projectName = project.name,
+                            root = session.activeTree.root,
+                            projectName = session.name,
+                            screens = computeScreenTabs(),
+                            activeScreenId = session.activeScreenId,
                             selectedId = null,
                             hoveredId = null,
-                            theme = project.theme,
+                            theme = session.theme,
                             projectPickerOpen = false,
                             saveStatus = SaveStatus.Idle,
                         )
@@ -242,28 +323,37 @@ class EditorViewModel(
         _state.update { it.copy(themeDialogOpen = false) }
     }
 
-    fun updateTheme(theme: io.github.chandu4221.designode.domain.model.ThemeSpec) {
+    fun updateTheme(theme: ThemeSpec) {
+        session.theme = theme
         _state.update { it.copy(theme = theme) }
         markDirty()
     }
 
     fun updateThemeSeedColor(seedColor: Long) {
-        _state.update { it.copy(theme = it.theme.copy(seedColor = seedColor)) }
+        val updated = session.theme.copy(seedColor = seedColor)
+        session.theme = updated
+        _state.update { it.copy(theme = updated) }
         markDirty()
     }
 
     fun toggleThemeDarkMode() {
-        _state.update { it.copy(theme = it.theme.copy(isDark = !it.theme.isDark)) }
+        val updated = session.theme.copy(isDark = !session.theme.isDark)
+        session.theme = updated
+        _state.update { it.copy(theme = updated) }
         markDirty()
     }
 
     fun updateThemeContrast(contrast: Double) {
-        _state.update { it.copy(theme = it.theme.copy(contrastLevel = contrast)) }
+        val updated = session.theme.copy(contrastLevel = contrast)
+        session.theme = updated
+        _state.update { it.copy(theme = updated) }
         markDirty()
     }
 
     fun updateThemeStyle(style: String) {
-        _state.update { it.copy(theme = it.theme.copy(style = style)) }
+        val updated = session.theme.copy(style = style)
+        session.theme = updated
+        _state.update { it.copy(theme = updated) }
         markDirty()
     }
 
@@ -279,7 +369,7 @@ class EditorViewModel(
         _state.update { it.copy(exportDialogOpen = false) }
     }
 
-    fun generateCode(): String = sourceGenerator.generate(tree.root)
+    fun generateCode(): String = sourceGenerator.generate(session.snapshot())
 
     // ─────────────────────────────────────────────────────
     // Internals
@@ -307,7 +397,7 @@ class EditorViewModel(
         // 1. Priority: Direct hit on a dedicated slot drop zone (e.g. Scaffold topBar/bottomBar/FAB placeholder)
         val slotHit = hitTestRegistry.hitTestSlot(positionInRoot.x, positionInRoot.y)
         if (slotHit != null) {
-            val node = tree.find(slotHit.nodeId)
+            val node = currentTree.find(slotHit.nodeId)
             if (node != null && validator.canDrop(node, slotHit.slotId, fakeChild).isSuccess) {
                 return DropTarget(node.id, slotHit.slotId)
             }
@@ -316,8 +406,6 @@ class EditorViewModel(
         // 2. Priority: Container hit on the canvas
         val hitId = hitTestRegistry.hitTest(positionInRoot.x, positionInRoot.y) ?: return null
 
-        // If dragging a dedicated component (e.g. TopAppBar, NavigationBar, FAB),
-        // redirect to its dedicated slot on an ancestor container (such as Scaffold)
         val dedicatedTarget = findDedicatedAncestorSlot(hitId, draggedType, fakeChild)
         if (dedicatedTarget != null) {
             return dedicatedTarget
@@ -325,7 +413,7 @@ class EditorViewModel(
 
         // 3. Fallback: Standard container ancestor resolution (e.g. Column.children)
         val candidate = findContainerAncestor(hitId) ?: return null
-        val node = tree.find(candidate) ?: return null
+        val node = currentTree.find(candidate) ?: return null
         val spec = registry.spec(node.type) ?: return null
         val slotId = resolveDropSlot(spec, draggedType) ?: return null
 
@@ -341,7 +429,7 @@ class EditorViewModel(
         draggedType: ComponentTypeId,
         fakeChild: AtomicNode,
     ): DropTarget? {
-        var current: AtomicNode? = tree.find(startId)
+        var current: AtomicNode? = currentTree.find(startId)
         while (current != null) {
             val spec = registry.spec(current.type)
             if (spec != null) {
@@ -350,17 +438,17 @@ class EditorViewModel(
                     return DropTarget(current.id, matchingSlot.id)
                 }
             }
-            current = tree.parentOf(current.id)
+            current = currentTree.parentOf(current.id)
         }
         return null
     }
 
     private fun findContainerAncestor(startId: NodeId): NodeId? {
-        var current = tree.find(startId)
+        var current = currentTree.find(startId)
         while (current != null) {
             val spec = registry.spec(current.type)
             if (spec != null && spec.slots.isNotEmpty()) return current.id
-            current = tree.parentOf(current.id)
+            current = currentTree.parentOf(current.id)
         }
         return null
     }
@@ -380,7 +468,15 @@ class EditorViewModel(
     }
 
     private fun syncRoot() {
-        _state.update { it.copy(root = tree.root) }
+        _state.update {
+            it.copy(
+                root = session.activeTree.root,
+                projectName = session.name,
+                screens = computeScreenTabs(),
+                activeScreenId = session.activeScreenId,
+                theme = session.theme,
+            )
+        }
     }
 
     private fun defaultScreen(): AtomicNode {

@@ -119,4 +119,24 @@ class ComposeSourceGeneratorTest {
         """.trimIndent()
         assertEquals(expected, output)
     }
+
+    @Test
+    fun `generates multiple screens as separate composable functions`() {
+        val screen1 = io.github.chandu4221.designode.domain.model.Screen(
+            id = io.github.chandu4221.designode.domain.model.ScreenId("s1"),
+            name = "Home",
+            root = text("Welcome"),
+        )
+        val screen2 = io.github.chandu4221.designode.domain.model.Screen(
+            id = io.github.chandu4221.designode.domain.model.ScreenId("s2"),
+            name = "Profile Settings",
+            root = text("Your Profile"),
+        )
+
+        val output = wrapper.generate(listOf(screen1, screen2))
+        assertTrue(output.contains("fun HomeScreen() {"))
+        assertTrue(output.contains("text = \"Welcome\""))
+        assertTrue(output.contains("fun ProfileSettingsScreen() {"))
+        assertTrue(output.contains("text = \"Your Profile\""))
+    }
 }

@@ -80,6 +80,15 @@ fun App(viewModel: EditorViewModel) {
                     onSave = viewModel::save,
                     onExport = viewModel::openExportDialog,
                 )
+                io.github.chandu4221.designode.ui.screens.ScreenTabBar(
+                    screens = state.screens,
+                    activeScreenId = state.activeScreenId,
+                    onSwitchScreen = viewModel::switchScreen,
+                    onAddScreen = { viewModel.addScreen() },
+                    onRenameScreen = viewModel::renameScreen,
+                    onRemoveScreen = viewModel::removeScreen,
+                    onSetStartScreen = viewModel::setStartScreen,
+                )
                 Row(modifier = Modifier.fillMaxSize()) {
                     PalettePanel(
                         specs = viewModel.specs,

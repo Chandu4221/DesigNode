@@ -16,6 +16,7 @@ class ProjectSession(
     private val idGenerator: NodeIdGenerator,
 ) {
     private var projectName: String = "Untitled"
+    var theme: ThemeSpec = ThemeSpec.Default
     private val trees: MutableMap<ScreenId, NodeTree> = mutableMapOf()
     private val screenNames: MutableMap<ScreenId, String> = mutableMapOf()
     private var screenOrder: MutableList<ScreenId> = mutableListOf()
@@ -122,6 +123,7 @@ class ProjectSession(
             )
         },
         startScreenId = startScreenId,
+        theme = theme,
     )
 
     private fun failure(message: String): Result<Nothing> =
@@ -145,6 +147,7 @@ class ProjectSession(
                 idGenerator = idGenerator,
             )
             session.projectName = project.name
+            session.theme = project.theme
             project.screens.forEach { (id, screen) ->
                 session.trees[id] = NodeTree(registry, validator, publisher, idGenerator, screen.root)
                 session.screenNames[id] = screen.name

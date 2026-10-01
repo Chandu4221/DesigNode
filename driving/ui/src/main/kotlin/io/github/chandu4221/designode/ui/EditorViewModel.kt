@@ -106,29 +106,25 @@ class EditorViewModel(
     // ─────────────────────────────────────────────────────
 
     fun beginDrag(type: ComponentTypeId) {
-        _state.update { it.copy(dragType = type, dropTargetId = null) }
+        _state.update { it.copy(dragType = type, dropTarget = null) }
     }
 
     fun updateDragPosition(positionInRoot: Offset) {
         val current = _state.value
         val draggedType = current.dragType ?: return
         val target = computeValidDropTarget(positionInRoot, draggedType)
-        _state.update { it.copy(dropTargetId = target) }
+        _state.update { it.copy(dropTarget = target) }
     }
 
     fun commitDrag() {
         val current = _state.value
         val draggedType = current.dragType
-        val targetId = current.dropTargetId
-        _state.update { it.copy(dragType = null, dropTargetId = null) }
+        val target = current.dropTarget
+        _state.update { it.copy(dragType = null, dropTarget = null) }
 
-        if (draggedType == null || targetId == null) return
+        if (draggedType == null || target == null) return
 
-        val targetNode = tree.find(targetId) ?: return
-        val targetSpec = registry.spec(targetNode.type) ?: return
-        val slotId = resolveDropSlot(targetSpec, draggedType) ?: return
-
-        tree.insert(targetNode.id, slotId, draggedType).onSuccess { newId ->
+        tree.insert(target.nodeId, target.slotId, draggedType).onSuccess { newId ->
             _state.update { it.copy(selectedId = newId) }
             syncRoot()
             markDirty()
@@ -136,7 +132,7 @@ class EditorViewModel(
     }
 
     fun cancelDrag() {
-        _state.update { it.copy(dragType = null, dropTargetId = null) }
+        _state.update { it.copy(dragType = null, dropTarget = null) }
     }
 
     // ─────────────────────────────────────────────────────
@@ -262,19 +258,61 @@ class EditorViewModel(
     private fun computeValidDropTarget(
         positionInRoot: Offset,
         draggedType: ComponentTypeId,
-    ): NodeId? {
-        val hitId = hitTestRegistry.hitTest(positionInRoot.x, positionInRoot.y) ?: return null
-        val candidate = findContainerAncestor(hitId) ?: return null
-
-        val node = tree.find(candidate) ?: return null
-        val spec = registry.spec(node.type) ?: return null
-        val slotId = resolveDropSlot(spec, draggedType) ?: return null
-
+    ): DropTarget? {
         val fakeChild = AtomicNode(
             id = NodeId("__drag-preview__"),
             type = draggedType,
         )
-        return if (validator.canDrop(node, slotId, fakeChild).isSuccess) candidate else null
+
+        // 1. Priority: Direct hit on a dedicated slot drop zone (e.g. Scaffold topBar/bottomBar/FAB placeholder)
+        val slotHit = hitTestRegistry.hitTestSlot(positionInRoot.x, positionInRoot.y)
+        if (slotHit != null) {
+            val node = tree.find(slotHit.nodeId)
+            if (node != null && validator.canDrop(node, slotHit.slotId, fakeChild).isSuccess) {
+                return DropTarget(node.id, slotHit.slotId)
+            }
+        }
+
+        // 2. Priority: Container hit on the canvas
+        val hitId = hitTestRegistry.hitTest(positionInRoot.x, positionInRoot.y) ?: return null
+
+        // If dragging a dedicated component (e.g. TopAppBar, NavigationBar, FAB),
+        // redirect to its dedicated slot on an ancestor container (such as Scaffold)
+        val dedicatedTarget = findDedicatedAncestorSlot(hitId, draggedType, fakeChild)
+        if (dedicatedTarget != null) {
+            return dedicatedTarget
+        }
+
+        // 3. Fallback: Standard container ancestor resolution (e.g. Column.children)
+        val candidate = findContainerAncestor(hitId) ?: return null
+        val node = tree.find(candidate) ?: return null
+        val spec = registry.spec(node.type) ?: return null
+        val slotId = resolveDropSlot(spec, draggedType) ?: return null
+
+        return if (validator.canDrop(node, slotId, fakeChild).isSuccess) {
+            DropTarget(node.id, slotId)
+        } else {
+            null
+        }
+    }
+
+    private fun findDedicatedAncestorSlot(
+        startId: NodeId,
+        draggedType: ComponentTypeId,
+        fakeChild: AtomicNode,
+    ): DropTarget? {
+        var current: AtomicNode? = tree.find(startId)
+        while (current != null) {
+            val spec = registry.spec(current.type)
+            if (spec != null) {
+                val matchingSlot = spec.slots.firstOrNull { draggedType in it.accepts }
+                if (matchingSlot != null && validator.canDrop(current, matchingSlot.id, fakeChild).isSuccess) {
+                    return DropTarget(current.id, matchingSlot.id)
+                }
+            }
+            current = tree.parentOf(current.id)
+        }
+        return null
     }
 
     private fun findContainerAncestor(startId: NodeId): NodeId? {

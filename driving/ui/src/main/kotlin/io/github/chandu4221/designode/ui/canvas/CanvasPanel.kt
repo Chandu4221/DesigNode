@@ -19,11 +19,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.CompositionLocalProvider
 import io.github.chandu4221.designode.domain.model.AtomicNode
+import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
 import io.github.chandu4221.designode.domain.model.SlotContent
 import io.github.chandu4221.designode.domain.model.SlotId
 import io.github.chandu4221.designode.domain.model.nodes
+import io.github.chandu4221.designode.ui.DropTarget
 
 @Composable
 fun CanvasPanel(
@@ -32,7 +35,9 @@ fun CanvasPanel(
     hitTestRegistry: HitTestRegistry,
     selectedId: NodeId?,
     hoveredId: NodeId?,
-    dropTargetId: NodeId?,
+    dropTarget: DropTarget? = null,
+    dropTargetId: NodeId? = dropTarget?.nodeId,
+    dragType: ComponentTypeId? = null,
     onNodeSelected: (NodeId?) -> Unit,
     onNodeHovered: (NodeId?) -> Unit,
     modifier: Modifier = Modifier,
@@ -48,19 +53,25 @@ fun CanvasPanel(
                 .width(360.dp)
                 .height(720.dp),
         ) {
-            DeviceFrame {
-                if (root.isPristineScaffold()) {
-                    EmptyCanvasHint()
+            CompositionLocalProvider(
+                LocalHitTestRegistry provides hitTestRegistry,
+                LocalDropTarget provides dropTarget,
+                LocalDragType provides dragType,
+            ) {
+                DeviceFrame {
+                    if (root.isPristineScaffold()) {
+                        EmptyCanvasHint()
+                    }
+                    NodePreview(
+                        node = root,
+                        renderers = renderers,
+                        hitTestRegistry = hitTestRegistry,
+                        selectedId = selectedId,
+                        hoveredId = hoveredId,
+                        dropTargetId = dropTarget?.nodeId ?: dropTargetId,
+                        modifier = Modifier.fillMaxSize(),
+                    )
                 }
-                NodePreview(
-                    node = root,
-                    renderers = renderers,
-                    hitTestRegistry = hitTestRegistry,
-                    selectedId = selectedId,
-                    hoveredId = hoveredId,
-                    dropTargetId = dropTargetId,
-                    modifier = Modifier.fillMaxSize(),
-                )
             }
             SelectionOverlay(
                 hitTestRegistry = hitTestRegistry,

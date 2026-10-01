@@ -3,6 +3,13 @@ package io.github.chandu4221.designode.ui
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
+import io.github.chandu4221.designode.domain.model.SlotId
+
+/** Represents a resolved drop target node and its specific slot. */
+data class DropTarget(
+    val nodeId: NodeId,
+    val slotId: SlotId,
+)
 
 data class EditorState(
     val root: AtomicNode,
@@ -10,11 +17,13 @@ data class EditorState(
     val selectedId: NodeId? = null,
     val hoveredId: NodeId? = null,
     val dragType: ComponentTypeId? = null,
-    val dropTargetId: NodeId? = null,
+    val dropTarget: DropTarget? = null,
     val exportDialogOpen: Boolean = false,
     val projectPickerOpen: Boolean = false,
     val saveStatus: SaveStatus = SaveStatus.Idle,
-)
+) {
+    val dropTargetId: NodeId? get() = dropTarget?.nodeId
+}
 
 sealed interface SaveStatus {
     data object Idle : SaveStatus

@@ -9,8 +9,21 @@ internal fun Long.asColorLiteral(): String {
 
 internal fun Float.asDpLiteral(): String = "${this}f.dp"
 
+/**
+ * Escapes a string for inclusion inside a Kotlin string literal.
+ *
+ * Backslash first (everything else introduces backslashes), then the
+ * double-quote, then control characters, then the dollar sign which would
+ * otherwise start string interpolation.
+ */
 internal fun String.escapeForStringLiteral(): String =
-    replace("\\", "\\\\").replace("\"", "\\\"")
+    this
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+        .replace("$", "\\$")
 
 internal fun formatModifier(modifier: ModifierToken): String = when (modifier) {
     is ModifierToken.Padding -> "padding(${modifier.all}f.dp)"
@@ -58,15 +71,6 @@ internal fun formatBlock(
     }
 }
 
-/**
- * Renders a named slot lambda inside a parameter list:
- *
- *     topBar = {
- *         <body, indented one extra level>
- *     },
- *
- * If [body] is empty, emits `name = {},` on a single line.
- */
 internal fun formatSlotLambda(name: String, body: String, indent: String): String {
     if (body.isEmpty()) return "${indent}${name} = {},"
     val indented = indentLines(body, "    ")
@@ -77,9 +81,6 @@ internal fun formatSlotLambda(name: String, body: String, indent: String): Strin
     }
 }
 
-/**
- * Prefixes every non-blank line of [text] with [prefix].
- */
 internal fun indentLines(text: String, prefix: String): String =
     text.lines().joinToString("\n") { line ->
         if (line.isBlank()) line else "$prefix$line"

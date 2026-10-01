@@ -6,6 +6,8 @@ import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
 import io.github.chandu4221.designode.domain.model.PropertyKey
+import io.github.chandu4221.designode.domain.model.SlotContent
+import io.github.chandu4221.designode.domain.model.SlotId
 import io.github.chandu4221.designode.domain.model.Value
 import io.github.chandu4221.designode.domain.model.VariantId
 import io.github.chandu4221.designode.domain.port.NodeEventPublisher
@@ -26,7 +28,6 @@ class EditorViewModel {
     private val publisher = NodeEventPublisher { /* no subscribers yet */ }
     private val idGenerator = RandomNodeIdGenerator
 
-    /** Owned here so the drag-drop logic can hit-test against live layout. */
     val hitTestRegistry = HitTestRegistry()
 
     val specs: List<ComponentSpec> = registry.all()
@@ -38,10 +39,7 @@ class EditorViewModel {
         validator = validator,
         publisher = publisher,
         idGenerator = idGenerator,
-        root = AtomicNode(
-            id = idGenerator.next(),
-            type = ComponentTypeId("Column"),
-        ),
+        root = defaultScreen(),
     )
 
     private val _state = MutableStateFlow(EditorState(root = tree.root))
@@ -89,7 +87,9 @@ class EditorViewModel {
     }
 
     fun updateDragPosition(positionInRoot: Offset) {
-        val target = computeDropTarget(positionInRoot)
+        val current = _state.value
+        val draggedType = current.dragType ?: return
+        val target = computeValidDropTarget(positionInRoot, draggedType)
         _state.update { it.copy(dropTargetId = target) }
     }
 
@@ -103,11 +103,9 @@ class EditorViewModel {
 
         val targetNode = tree.find(targetId) ?: return
         val targetSpec = registry.spec(targetNode.type) ?: return
-        val slot = targetSpec.slots.firstOrNull { it.isDefault }
-            ?: targetSpec.slots.singleOrNull()
-            ?: return
+        val slotId = resolveDropSlot(targetSpec, draggedType) ?: return
 
-        tree.insert(targetNode.id, slot.id, draggedType).onSuccess { newId ->
+        tree.insert(targetNode.id, slotId, draggedType).onSuccess { newId ->
             _state.update { it.copy(selectedId = newId) }
             syncRoot()
         }
@@ -117,17 +115,69 @@ class EditorViewModel {
         _state.update { it.copy(dragType = null, dropTargetId = null) }
     }
 
-    private fun computeDropTarget(positionInRoot: Offset): NodeId? {
+    private fun computeValidDropTarget(
+        positionInRoot: Offset,
+        draggedType: ComponentTypeId,
+    ): NodeId? {
         val hitId = hitTestRegistry.hitTest(positionInRoot.x, positionInRoot.y) ?: return null
-        // Guard against stale bounds for nodes that no longer exist.
-        val node = tree.find(hitId) ?: return null
-        // Reject targets with no usable slot.
+        val candidate = findContainerAncestor(hitId) ?: return null
+
+        val node = tree.find(candidate) ?: return null
         val spec = registry.spec(node.type) ?: return null
-        val hasSlot = spec.slots.any { it.isDefault } || spec.slots.size == 1
-        return if (hasSlot) node.id else null
+        val slotId = resolveDropSlot(spec, draggedType) ?: return null
+
+        val fakeChild = AtomicNode(
+            id = NodeId("__drag-preview__"),
+            type = draggedType,
+        )
+        return if (validator.canDrop(node, slotId, fakeChild).isSuccess) candidate else null
+    }
+
+    private fun findContainerAncestor(startId: NodeId): NodeId? {
+        var current = tree.find(startId)
+        while (current != null) {
+            val spec = registry.spec(current.type)
+            if (spec != null && spec.slots.isNotEmpty()) return current.id
+            current = tree.parentOf(current.id)
+        }
+        return null
+    }
+
+    private fun resolveDropSlot(
+        targetSpec: ComponentSpec,
+        draggedType: ComponentTypeId,
+    ): SlotId? {
+        val explicit = targetSpec.slots.filter { draggedType in it.accepts }
+        if (explicit.isNotEmpty()) {
+            val preferred = explicit.firstOrNull { it.isDefault } ?: explicit.first()
+            return preferred.id
+        }
+        val default = targetSpec.slots.firstOrNull { it.isDefault }
+        if (default != null) return default.id
+        return targetSpec.slots.singleOrNull()?.id
     }
 
     private fun syncRoot() {
         _state.update { it.copy(root = tree.root) }
+    }
+
+    /**
+     * The default screen root: a Scaffold with an empty Column in its
+     * content slot. Every screen starts here — mirroring how real Compose
+     * apps are structured. The Scaffold cannot be removed (root
+     * protection in NodeTree).
+     */
+    private fun defaultScreen(): AtomicNode {
+        val contentColumn = AtomicNode(
+            id = idGenerator.next(),
+            type = ComponentTypeId("Column"),
+        )
+        return AtomicNode(
+            id = idGenerator.next(),
+            type = ComponentTypeId("Scaffold"),
+            slots = mapOf(
+                SlotId("content") to SlotContent.One(contentColumn),
+            ),
+        )
     }
 }

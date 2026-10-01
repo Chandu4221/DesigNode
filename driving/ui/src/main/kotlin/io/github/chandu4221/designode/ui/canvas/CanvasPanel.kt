@@ -10,13 +10,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.NodeId
+import io.github.chandu4221.designode.domain.model.SlotContent
+import io.github.chandu4221.designode.domain.model.SlotId
+import io.github.chandu4221.designode.domain.model.nodes
 
 @Composable
 fun CanvasPanel(
@@ -33,7 +40,7 @@ fun CanvasPanel(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.surfaceContainerLow),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -42,6 +49,9 @@ fun CanvasPanel(
                 .height(720.dp),
         ) {
             DeviceFrame {
+                if (root.isPristineScaffold()) {
+                    EmptyCanvasHint()
+                }
                 NodePreview(
                     node = root,
                     renderers = renderers,
@@ -62,15 +72,31 @@ fun CanvasPanel(
 }
 
 @Composable
+private fun EmptyCanvasHint() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Drag a component\nfrom the palette",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
 private fun DeviceFrame(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(Color.White)
             .border(
-                width = 2.dp,
-                color = MaterialTheme.colorScheme.outline,
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(24.dp),
             )
             .padding(4.dp),
@@ -79,9 +105,22 @@ private fun DeviceFrame(content: @Composable () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(20.dp))
-                .background(MaterialTheme.colorScheme.surface),
+                .background(Color.White),
         ) {
             content()
         }
     }
+}
+
+/**
+ * True when the tree is exactly the default: Scaffold with a single,
+ * childless Column in its content slot. Any insertion flips this to false.
+ */
+private fun AtomicNode.isPristineScaffold(): Boolean {
+    if (type.value != "Scaffold") return false
+    val content = slots[SlotId("content")]?.nodes().orEmpty()
+    if (content.size != 1) return false
+    val column = content.first()
+    if (column.type.value != "Column") return false
+    return column.slots.values.all { it == SlotContent.Empty }
 }

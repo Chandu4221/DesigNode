@@ -25,7 +25,7 @@ class IconEmitter : CodeEmitter {
             } else {
                 add("modifier = Modifier.size(${p.dp("size", 24f)}f.dp)")
             }
-            add("tint = ${p.color("tint").asColorLiteral()}")
+            add("tint = ${p.colorExpression("tint")}")
         }
         return formatCall("Icon", args, indent)
     }

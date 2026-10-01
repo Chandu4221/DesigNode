@@ -29,6 +29,14 @@ class Properties(node: AtomicNode) {
     fun color(key: String, default: Long = 0xFF000000L): Long =
         (map[PropertyKey(key)] as? Value.Color)?.value ?: default
 
+    fun colorExpression(key: String, default: Long = 0xFF000000L): String {
+        return when (val v = map[PropertyKey(key)]) {
+            is Value.ColorRole -> "MaterialTheme.colorScheme.${v.role}"
+            is Value.Color -> v.value.asColorLiteral()
+            else -> default.asColorLiteral()
+        }
+    }
+
     fun enumValue(key: String, default: String = ""): String =
         (map[PropertyKey(key)] as? Value.EnumValue)?.name ?: default
 }

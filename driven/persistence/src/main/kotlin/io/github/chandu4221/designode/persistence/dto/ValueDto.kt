@@ -29,4 +29,8 @@ sealed interface ValueDto {
     @Serializable
     @SerialName("enum")
     data class EnumValue(val name: String) : ValueDto
+
+    @Serializable
+    @SerialName("color_role")
+    data class ColorRole(val role: String) : ValueDto
 }

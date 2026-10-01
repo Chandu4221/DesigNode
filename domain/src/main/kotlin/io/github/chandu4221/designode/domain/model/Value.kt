@@ -7,4 +7,5 @@ sealed interface Value {
     data class Dp(val value: Float) : Value
     data class Color(val value: Long) : Value      // ARGB as Long
     data class EnumValue(val name: String) : Value
+    data class ColorRole(val role: String) : Value // Material 3 color role name, e.g. "primary"
 }

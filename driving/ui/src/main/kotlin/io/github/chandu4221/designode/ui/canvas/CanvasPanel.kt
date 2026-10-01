@@ -104,7 +104,7 @@ private fun DeviceFrame(content: @Composable () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(24.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant,
@@ -116,7 +116,7 @@ private fun DeviceFrame(content: @Composable () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color.White),
+                .background(MaterialTheme.colorScheme.background),
         ) {
             content()
         }

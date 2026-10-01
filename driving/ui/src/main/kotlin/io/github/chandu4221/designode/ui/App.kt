@@ -40,6 +40,14 @@ import io.github.chandu4221.designode.ui.inspector.InspectorPanel
 import io.github.chandu4221.designode.ui.palette.PalettePanel
 import io.github.chandu4221.designode.ui.project.ProjectPickerDialog
 
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.ui.graphics.Color
+import com.materialkolor.DynamicMaterialTheme
+import io.github.chandu4221.designode.ui.theme.ThemeDialog
+import io.github.chandu4221.designode.ui.theme.parsePaletteStyle
+
 @Composable
 fun App(viewModel: EditorViewModel) {
     val state by viewModel.state.collectAsState()
@@ -49,7 +57,13 @@ fun App(viewModel: EditorViewModel) {
     val selectedNode = state.selectedId?.let { state.root.findNode(it) }
     val selectedSpec = selectedNode?.let { viewModel.spec(it.type) }
 
-    MaterialTheme {
+    DynamicMaterialTheme(
+        seedColor = Color(state.theme.seedColor),
+        useDarkTheme = state.theme.isDark,
+        style = parsePaletteStyle(state.theme.style),
+        contrastLevel = state.theme.contrastLevel,
+        animate = true,
+    ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
@@ -58,6 +72,9 @@ fun App(viewModel: EditorViewModel) {
                 TopBar(
                     projectName = state.projectName,
                     saveStatus = state.saveStatus,
+                    isDark = state.theme.isDark,
+                    onToggleDarkMode = viewModel::toggleThemeDarkMode,
+                    onOpenTheme = viewModel::openThemeDialog,
                     onNew = viewModel::newProject,
                     onOpen = viewModel::openProjectPicker,
                     onSave = viewModel::save,
@@ -115,6 +132,17 @@ fun App(viewModel: EditorViewModel) {
                 onDismiss = viewModel::closeProjectPicker,
             )
         }
+
+        if (state.themeDialogOpen) {
+            ThemeDialog(
+                theme = state.theme,
+                onSeedColorChange = viewModel::updateThemeSeedColor,
+                onDarkModeToggle = viewModel::toggleThemeDarkMode,
+                onContrastChange = viewModel::updateThemeContrast,
+                onStyleChange = viewModel::updateThemeStyle,
+                onDismiss = viewModel::closeThemeDialog,
+            )
+        }
     }
 }
 
@@ -122,6 +150,9 @@ fun App(viewModel: EditorViewModel) {
 private fun TopBar(
     projectName: String,
     saveStatus: SaveStatus,
+    isDark: Boolean,
+    onToggleDarkMode: () -> Unit,
+    onOpenTheme: () -> Unit,
     onNew: () -> Unit,
     onOpen: () -> Unit,
     onSave: () -> Unit,
@@ -157,6 +188,20 @@ private fun TopBar(
 
             SaveStatusBadge(saveStatus)
 
+            IconButton(onClick = onToggleDarkMode) {
+                Icon(
+                    imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = if (isDark) "Switch to light mode" else "Switch to dark mode",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onOpenTheme) {
+                Icon(
+                    imageVector = Icons.Default.Palette,
+                    contentDescription = "Theme settings",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             IconButton(onClick = onNew) {
                 Icon(
                     imageVector = Icons.Default.CreateNewFolder,

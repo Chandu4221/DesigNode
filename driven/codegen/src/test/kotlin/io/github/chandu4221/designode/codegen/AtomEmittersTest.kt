@@ -92,6 +92,30 @@ class AtomEmittersTest {
     }
 
     @Test
+    fun `text with ColorRole emits MaterialTheme colorScheme reference`() {
+        val node = text("Themed Text").copy(
+            properties = mapOf(
+                PropertyKey("text") to Value.Text("Themed Text"),
+                PropertyKey("color") to Value.ColorRole("primary"),
+            )
+        )
+        val output = generator.generate(node)
+        assertEquals(true, output.contains("color = MaterialTheme.colorScheme.primary,"))
+    }
+
+    @Test
+    fun `icon with ColorRole emits MaterialTheme colorScheme reference`() {
+        val node = icon().copy(
+            properties = mapOf(
+                PropertyKey("name") to Value.Text("Favorite"),
+                PropertyKey("tint") to Value.ColorRole("secondary"),
+            )
+        )
+        val output = generator.generate(node)
+        assertEquals(true, output.contains("tint = MaterialTheme.colorScheme.secondary,"))
+    }
+
+    @Test
     fun `icon emits with size modifier from property`() {
         val output = generator.generate(icon(name = "Star", size = 32f))
         val expected = """

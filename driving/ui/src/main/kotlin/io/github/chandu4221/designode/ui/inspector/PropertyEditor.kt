@@ -1,16 +1,22 @@
 package io.github.chandu4221.designode.ui.inspector
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.chandu4221.designode.domain.model.MaterialColorRoles
 import io.github.chandu4221.designode.domain.model.PropertyKind
 import io.github.chandu4221.designode.domain.model.Value
 import io.github.chandu4221.designode.domain.spec.PropertySpec
+import io.github.chandu4221.designode.ui.theme.resolveColorRole
 
 /**
  * Renders an editor for one property. The editor widget is chosen by
@@ -110,19 +116,107 @@ private fun DpPropertyEditor(current: Value?, onChange: (Value) -> Unit) {
 
 @Composable
 private fun ColorPropertyEditor(current: Value?, onChange: (Value) -> Unit) {
-    val initial = (current as? Value.Color)?.value?.let { hex(it) }.orEmpty()
-    var text by remember(initial) { mutableStateOf(initial) }
-    OutlinedTextField(
-        value = text,
-        onValueChange = {
-            text = it
-            parseHex(it)?.let { parsed -> onChange(Value.Color(parsed)) }
-        },
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodySmall,
-        placeholder = { Text("#AARRGGBB", style = MaterialTheme.typography.bodySmall) },
-        modifier = Modifier.fillMaxWidth(),
-    )
+    var mode by remember(current) { mutableStateOf(if (current is Value.Color) "custom" else "role") }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        FilterChip(
+            selected = mode == "role",
+            onClick = {
+                mode = "role"
+                onChange(Value.ColorRole(MaterialColorRoles.PRIMARY))
+            },
+            label = { Text("Theme Role", style = MaterialTheme.typography.labelSmall) },
+        )
+        FilterChip(
+            selected = mode == "custom",
+            onClick = {
+                mode = "custom"
+                val defaultColor = (current as? Value.Color)?.value ?: 0xFF000000L
+                onChange(Value.Color(defaultColor))
+            },
+            label = { Text("Custom Hex", style = MaterialTheme.typography.labelSmall) },
+        )
+    }
+
+    if (mode == "role") {
+        val selectedRole = (current as? Value.ColorRole)?.role ?: MaterialColorRoles.PRIMARY
+        var expanded by remember { mutableStateOf(false) }
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Surface(
+                onClick = { expanded = true },
+                shape = RoundedCornerShape(4.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(resolveColorRole(selectedRole))
+                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    )
+                    Text(
+                        text = selectedRole,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                MaterialColorRoles.ALL.forEach { role ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clip(CircleShape)
+                                        .background(resolveColorRole(role))
+                                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                )
+                                Text(role, style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        onClick = {
+                            onChange(Value.ColorRole(role))
+                            expanded = false
+                        },
+                    )
+                }
+            }
+        }
+    } else {
+        val initial = (current as? Value.Color)?.value?.let { hex(it) }.orEmpty()
+        var text by remember(initial) { mutableStateOf(initial) }
+        OutlinedTextField(
+            value = text,
+            onValueChange = {
+                text = it
+                parseHex(it)?.let { parsed -> onChange(Value.Color(parsed)) }
+            },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall,
+            placeholder = { Text("#AARRGGBB", style = MaterialTheme.typography.bodySmall) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable

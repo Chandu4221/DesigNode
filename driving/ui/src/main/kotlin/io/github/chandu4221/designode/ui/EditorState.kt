@@ -5,6 +5,8 @@ import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
 import io.github.chandu4221.designode.domain.model.SlotId
 
+import io.github.chandu4221.designode.domain.model.ThemeSpec
+
 /** Represents a resolved drop target node and its specific slot. */
 data class DropTarget(
     val nodeId: NodeId,
@@ -20,6 +22,8 @@ data class EditorState(
     val dropTarget: DropTarget? = null,
     val exportDialogOpen: Boolean = false,
     val projectPickerOpen: Boolean = false,
+    val themeDialogOpen: Boolean = false,
+    val theme: ThemeSpec = ThemeSpec.Default,
     val saveStatus: SaveStatus = SaveStatus.Idle,
 ) {
     val dropTargetId: NodeId? get() = dropTarget?.nodeId

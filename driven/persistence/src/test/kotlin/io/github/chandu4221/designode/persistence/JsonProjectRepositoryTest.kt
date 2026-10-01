@@ -155,4 +155,38 @@ class JsonProjectRepositoryTest {
         val loaded = repo.load(project.id).getOrThrow()
         assertEquals("Renamed", loaded.name)
     }
+
+    @Test
+    fun `round-trip preserves theme and color role`() = runTest {
+        val original = sampleProject().let { proj ->
+            val screen = proj.screens.values.first()
+            val textWithRole = (screen.root.slots[SlotId("content")] as SlotContent.One).node.let { node ->
+                node.copy(
+                    properties = node.properties + (PropertyKey("color") to Value.ColorRole("primary"))
+                )
+            }
+            val updatedRoot = screen.root.copy(slots = mapOf(SlotId("content") to SlotContent.One(textWithRole)))
+            val updatedScreen = screen.copy(root = updatedRoot)
+            proj.copy(
+                screens = mapOf(updatedScreen.id to updatedScreen),
+                theme = io.github.chandu4221.designode.domain.model.ThemeSpec(
+                    seedColor = 0xFF00FF00L,
+                    isDark = true,
+                    contrastLevel = 0.5,
+                    style = "Vibrant",
+                )
+            )
+        }
+
+        repo.save(original).getOrThrow()
+        val loaded = repo.load(original.id).getOrThrow()
+
+        assertEquals(0xFF00FF00L, loaded.theme.seedColor)
+        assertEquals(true, loaded.theme.isDark)
+        assertEquals(0.5, loaded.theme.contrastLevel)
+        assertEquals("Vibrant", loaded.theme.style)
+
+        val loadedChild = loaded.screens.values.first().root.slots[SlotId("content")]?.nodes()?.firstOrNull()
+        assertEquals(Value.ColorRole("primary"), loadedChild?.properties?.get(PropertyKey("color")))
+    }
 }

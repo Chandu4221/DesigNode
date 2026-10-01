@@ -23,7 +23,7 @@ class TextEmitter : CodeEmitter {
                 add("modifier = ${formatModifierChain(node.modifiers)}")
             }
             add("style = MaterialTheme.typography.${p.enumValue("style", "bodyMedium")}")
-            add("color = ${p.color("color").asColorLiteral()}")
+            add("color = ${p.colorExpression("color")}")
             add("textAlign = ${p.enumValue("textAlign", "start").toTextAlign()}")
         }
         return formatCall("Text", args, indent)

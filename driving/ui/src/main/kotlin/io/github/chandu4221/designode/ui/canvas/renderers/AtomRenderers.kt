@@ -25,7 +25,7 @@ internal val TextPreview: PreviewRenderer = { node, _ ->
     Text(
         text = node.properties.text("text"),
         style = MaterialTheme.typography.bodyMedium,
-        color = Color(node.properties.color("color")),
+        color = node.properties.composeColor("color"),
         textAlign = textAlignOf(node.properties.enumValue("textAlign", "start")),
     )
 }
@@ -35,7 +35,7 @@ internal val IconPreview: PreviewRenderer = { node, _ ->
         imageVector = Icons.Default.Star,
         contentDescription = node.properties.text("contentDescription"),
         modifier = Modifier.size(node.properties.dp("size", 24f).dp),
-        tint = Color(node.properties.color("tint")),
+        tint = node.properties.composeColor("tint"),
     )
 }
 

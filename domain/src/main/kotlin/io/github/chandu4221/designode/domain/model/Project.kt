@@ -5,4 +5,5 @@ data class Project(
     val name: String,
     val screens: Map<ScreenId, Screen>,
     val startScreenId: ScreenId?,
+    val theme: ThemeSpec = ThemeSpec.Default,
 )

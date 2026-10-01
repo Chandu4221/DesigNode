@@ -10,6 +10,7 @@ fun Value.toDto(): ValueDto = when (this) {
     is Value.Dp -> ValueDto.Dp(value)
     is Value.Color -> ValueDto.Color(value)
     is Value.EnumValue -> ValueDto.EnumValue(name)
+    is Value.ColorRole -> ValueDto.ColorRole(role)
 }
 
 fun ValueDto.toDomain(): Value = when (this) {
@@ -19,4 +20,5 @@ fun ValueDto.toDomain(): Value = when (this) {
     is ValueDto.Dp -> Value.Dp(value)
     is ValueDto.Color -> Value.Color(value)
     is ValueDto.EnumValue -> Value.EnumValue(name)
+    is ValueDto.ColorRole -> Value.ColorRole(role)
 }

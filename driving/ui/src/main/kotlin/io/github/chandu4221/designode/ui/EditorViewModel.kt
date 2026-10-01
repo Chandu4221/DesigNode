@@ -155,6 +155,7 @@ class EditorViewModel(
                 projectName = "Untitled",
                 selectedId = null,
                 hoveredId = null,
+                theme = io.github.chandu4221.designode.domain.model.ThemeSpec.Default,
                 saveStatus = SaveStatus.Idle,
             )
         }
@@ -172,6 +173,7 @@ class EditorViewModel(
                 )
             ),
             startScreenId = currentScreenId,
+            theme = _state.value.theme,
         )
         scope.launch {
             _state.update { it.copy(saveStatus = SaveStatus.Saving) }
@@ -219,12 +221,50 @@ class EditorViewModel(
                             projectName = project.name,
                             selectedId = null,
                             hoveredId = null,
+                            theme = project.theme,
                             projectPickerOpen = false,
                             saveStatus = SaveStatus.Idle,
                         )
                     }
                 }
         }
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Theme
+    // ─────────────────────────────────────────────────────
+
+    fun openThemeDialog() {
+        _state.update { it.copy(themeDialogOpen = true) }
+    }
+
+    fun closeThemeDialog() {
+        _state.update { it.copy(themeDialogOpen = false) }
+    }
+
+    fun updateTheme(theme: io.github.chandu4221.designode.domain.model.ThemeSpec) {
+        _state.update { it.copy(theme = theme) }
+        markDirty()
+    }
+
+    fun updateThemeSeedColor(seedColor: Long) {
+        _state.update { it.copy(theme = it.theme.copy(seedColor = seedColor)) }
+        markDirty()
+    }
+
+    fun toggleThemeDarkMode() {
+        _state.update { it.copy(theme = it.theme.copy(isDark = !it.theme.isDark)) }
+        markDirty()
+    }
+
+    fun updateThemeContrast(contrast: Double) {
+        _state.update { it.copy(theme = it.theme.copy(contrastLevel = contrast)) }
+        markDirty()
+    }
+
+    fun updateThemeStyle(style: String) {
+        _state.update { it.copy(theme = it.theme.copy(style = style)) }
+        markDirty()
     }
 
     // ─────────────────────────────────────────────────────

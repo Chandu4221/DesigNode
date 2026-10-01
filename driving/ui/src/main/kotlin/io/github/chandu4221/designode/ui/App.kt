@@ -15,14 +15,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import io.github.chandu4221.designode.ui.canvas.CanvasPanel
+import io.github.chandu4221.designode.ui.canvas.PreviewRenderersRegistry
 import io.github.chandu4221.designode.ui.palette.PalettePanel
 
 @Composable
 fun App(viewModel: EditorViewModel) {
     val state by viewModel.state.collectAsState()
+    val renderers = remember { PreviewRenderersRegistry.build() }
 
     MaterialTheme {
         Surface(
@@ -36,7 +40,14 @@ fun App(viewModel: EditorViewModel) {
                         specs = viewModel.specs,
                         modifier = Modifier.width(240.dp),
                     )
-                    CanvasPanel(modifier = Modifier.weight(1f))
+                    CanvasPanel(
+                        root = state.root,
+                        renderers = renderers,
+                        selectedId = state.selectedId,
+                        hoveredId = state.hoveredId,
+                        onNodeSelected = viewModel::selectNode,
+                        modifier = Modifier.weight(1f),
+                    )
                     InspectorPanel(modifier = Modifier.width(280.dp))
                 }
             }
@@ -58,22 +69,6 @@ private fun TopBar() {
                 text = "DesigNode",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CanvasPanel(modifier: Modifier = Modifier) {
-    Surface(
-        color = MaterialTheme.colorScheme.background,
-        modifier = modifier.fillMaxHeight(),
-    ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "Canvas",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onBackground,
             )
         }
     }

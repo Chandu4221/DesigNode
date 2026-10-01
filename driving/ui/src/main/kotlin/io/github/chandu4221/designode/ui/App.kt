@@ -46,6 +46,7 @@ fun App(viewModel: EditorViewModel) {
                         selectedId = state.selectedId,
                         hoveredId = state.hoveredId,
                         onNodeSelected = viewModel::selectNode,
+                        onNodeHovered = viewModel::hoverNode,
                         modifier = Modifier.weight(1f),
                     )
                     InspectorPanel(modifier = Modifier.width(280.dp))

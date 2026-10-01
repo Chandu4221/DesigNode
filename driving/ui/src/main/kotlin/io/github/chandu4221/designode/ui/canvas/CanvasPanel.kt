@@ -15,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.NodeId
@@ -27,6 +26,7 @@ fun CanvasPanel(
     selectedId: NodeId?,
     hoveredId: NodeId?,
     onNodeSelected: (NodeId?) -> Unit,
+    onNodeHovered: (NodeId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hitTestRegistry = remember { HitTestRegistry() }
@@ -37,14 +37,26 @@ fun CanvasPanel(
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center,
     ) {
-        DeviceFrame {
-            NodePreview(
-                node = root,
-                renderers = renderers,
+        Box(
+            modifier = Modifier
+                .width(360.dp)
+                .height(720.dp),
+        ) {
+            DeviceFrame {
+                NodePreview(
+                    node = root,
+                    renderers = renderers,
+                    hitTestRegistry = hitTestRegistry,
+                    selectedId = selectedId,
+                    hoveredId = hoveredId,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            // Overlay on top — intercepts all input for the frame area.
+            SelectionOverlay(
                 hitTestRegistry = hitTestRegistry,
-                selectedId = selectedId,
-                hoveredId = hoveredId,
-                modifier = Modifier.fillMaxSize(),
+                onNodeSelected = onNodeSelected,
+                onNodeHovered = onNodeHovered,
             )
         }
     }
@@ -54,8 +66,7 @@ fun CanvasPanel(
 private fun DeviceFrame(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
-            .width(360.dp)
-            .height(720.dp)
+            .fillMaxSize()
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(

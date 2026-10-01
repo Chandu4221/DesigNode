@@ -29,7 +29,7 @@ class ScaffoldEmitter : CodeEmitter {
             children.slot("floatingActionButton").takeIf { it.isNotEmpty() }?.let {
                 add(formatSlotLambda("floatingActionButton", it, inner))
             }
-            add(formatSlotLambda("content", contentBody, inner, parameter = "padding"))
+            add(formatContentSlot("content", contentBody, inner))
             if (node.modifiers.isNotEmpty()) {
                 add("${inner}modifier = ${formatModifierChain(node.modifiers)},")
             }
@@ -46,25 +46,27 @@ class ScaffoldEmitter : CodeEmitter {
         this[SlotId(name)].orEmpty().joinToString("\n")
 
     /**
-     * Overload of the shared [formatSlotLambda] that adds a lambda parameter.
-     * Content is `content = { padding -> ... }`.
+     * Scaffold's content slot receives a PaddingValues that consumers are
+     * expected to apply — otherwise content renders under the top bar and
+     * FAB. We wrap the user's content in a Box with the padding applied.
      */
-    private fun formatSlotLambda(
-        name: String,
-        body: String,
-        indent: String,
-        parameter: String,
-    ): String {
+    private fun formatContentSlot(name: String, body: String, indent: String): String {
         if (body.isEmpty()) {
-            return "${indent}${name} = { _ -> },"
+            return "${indent}$name = { _ -> },"
         }
+        val innerIndent = "$indent    "
+        val boxIndent = "$innerIndent    "
+        val bodyIndent = "$boxIndent    "
         val indented = body.lines().joinToString("\n") { line ->
-            if (line.isBlank()) line else "    $line"
+            if (line.isBlank()) line else "$bodyIndent$line"
         }
         return buildString {
-            append("${indent}$name = { $parameter ->\n")
+            append("${indent}$name = { padding ->\n")
+            append("${innerIndent}Box(\n")
+            append("${boxIndent}modifier = Modifier.padding(padding),\n")
+            append("${innerIndent}) {\n")
             append(indented).append("\n")
-            append("${indent}},")
+            append("${innerIndent}},\n")
         }
     }
 }

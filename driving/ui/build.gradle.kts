@@ -14,6 +14,7 @@ kotlin {
 dependencies {
     implementation(project(":domain"))
     implementation(project(":catalog"))
+    implementation(project(":driven:codegen"))
 
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)

@@ -2,18 +2,26 @@ package io.github.chandu4221.designode.ui
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,6 +30,7 @@ import io.github.chandu4221.designode.domain.model.NodeId
 import io.github.chandu4221.designode.domain.model.nodes
 import io.github.chandu4221.designode.ui.canvas.CanvasPanel
 import io.github.chandu4221.designode.ui.canvas.PreviewRenderersRegistry
+import io.github.chandu4221.designode.ui.export.ExportDialog
 import io.github.chandu4221.designode.ui.inspector.InspectorPanel
 import io.github.chandu4221.designode.ui.palette.PalettePanel
 
@@ -39,7 +48,7 @@ fun App(viewModel: EditorViewModel) {
             color = MaterialTheme.colorScheme.background,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                TopBar()
+                TopBar(onExport = viewModel::openExportDialog)
                 Row(modifier = Modifier.fillMaxSize()) {
                     PalettePanel(
                         specs = viewModel.specs,
@@ -75,11 +84,22 @@ fun App(viewModel: EditorViewModel) {
                 }
             }
         }
+
+        if (state.exportDialogOpen) {
+            var cachedCode by remember { mutableStateOf("") }
+            androidx.compose.runtime.LaunchedEffect(state.exportDialogOpen) {
+                cachedCode = viewModel.generateCode()
+            }
+            ExportDialog(
+                code = cachedCode,
+                onDismiss = viewModel::closeExportDialog,
+            )
+        }
     }
 }
 
 @Composable
-private fun TopBar() {
+private fun TopBar(onExport: () -> Unit) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -93,6 +113,16 @@ private fun TopBar() {
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.weight(1f))
+            Button(onClick = onExport) {
+                Icon(
+                    imageVector = Icons.Default.Upload,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Export")
+            }
         }
     }
 }

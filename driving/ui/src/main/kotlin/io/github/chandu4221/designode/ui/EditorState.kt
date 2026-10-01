@@ -10,4 +10,5 @@ data class EditorState(
     val hoveredId: NodeId? = null,
     val dragType: ComponentTypeId? = null,
     val dropTargetId: NodeId? = null,
+    val exportDialogOpen: Boolean = false,
 )

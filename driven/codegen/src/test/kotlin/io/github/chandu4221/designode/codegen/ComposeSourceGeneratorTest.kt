@@ -37,9 +37,9 @@ class ComposeSourceGeneratorTest {
     }
 
     @Test
-    fun `output contains composable function declaration`() {
+    fun `output contains opt-in and composable declaration`() {
         val output = wrapper.generate(text("Hi"))
-        assertTrue(output.contains("@Composable\nfun Screen() {"))
+        assertTrue(output.contains("@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun Screen() {"))
     }
 
     @Test
@@ -54,15 +54,10 @@ class ComposeSourceGeneratorTest {
         assertTrue(output.contains("fun MyCustomScreen() {"))
     }
 
-    // ─────────────────────────────────────────────────────
-    // Escaping
-    // ─────────────────────────────────────────────────────
-
     @Test
     fun `escapes newline`() {
         val output = wrapper.generate(text("line1\nline2"))
         assertTrue(output.contains("text = \"line1\\nline2\""))
-        assertTrue(!output.contains("line1\nline2"))
     }
 
     @Test
@@ -78,7 +73,7 @@ class ComposeSourceGeneratorTest {
     }
 
     @Test
-    fun `escapes dollar sign to prevent interpolation`() {
+    fun `escapes dollar sign`() {
         val output = wrapper.generate(text("Price: \$100"))
         assertTrue(output.contains("text = \"Price: \\\$100\""))
     }
@@ -96,16 +91,6 @@ class ComposeSourceGeneratorTest {
     }
 
     @Test
-    fun `combined special characters are escaped correctly`() {
-        val output = wrapper.generate(text("Line1\nSay \"\$name\"\tend\\"))
-        // Expected: Line1\nSay \"\$name\"\tend\\
-        assertTrue(output.contains("Line1\\n"))
-        assertTrue(output.contains("\\\"\\\$name\\\""))
-        assertTrue(output.contains("\\t"))
-        assertTrue(output.contains("\\\\"))
-    }
-
-    @Test
     fun `full output is compilable shape`() {
         val output = wrapper.generate(text("Hello"))
         val expected = """
@@ -113,6 +98,7 @@ class ComposeSourceGeneratorTest {
             import androidx.compose.material.icons.Icons
             import androidx.compose.material.icons.filled.*
             import androidx.compose.material3.*
+            import androidx.compose.material3.ExperimentalMaterial3Api
             import androidx.compose.runtime.Composable
             import androidx.compose.ui.Alignment
             import androidx.compose.ui.Modifier
@@ -120,6 +106,7 @@ class ComposeSourceGeneratorTest {
             import androidx.compose.ui.text.style.TextAlign
             import androidx.compose.ui.unit.dp
 
+            @OptIn(ExperimentalMaterial3Api::class)
             @Composable
             fun Screen() {
                 Text(

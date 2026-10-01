@@ -2,6 +2,7 @@ package io.github.chandu4221.designode.ui
 
 import androidx.compose.ui.geometry.Offset
 import io.github.chandu4221.designode.catalog.Material3Catalog
+import io.github.chandu4221.designode.codegen.ComposeSourceGenerator
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
@@ -27,6 +28,7 @@ class EditorViewModel {
     private val validator = SlotValidator(registry)
     private val publisher = NodeEventPublisher { /* no subscribers yet */ }
     private val idGenerator = RandomNodeIdGenerator
+    private val sourceGenerator = ComposeSourceGenerator()
 
     val hitTestRegistry = HitTestRegistry()
 
@@ -115,6 +117,24 @@ class EditorViewModel {
         _state.update { it.copy(dragType = null, dropTargetId = null) }
     }
 
+    // ─────────────────────────────────────────────────────
+    // Export
+    // ─────────────────────────────────────────────────────
+
+    fun openExportDialog() {
+        _state.update { it.copy(exportDialogOpen = true) }
+    }
+
+    fun closeExportDialog() {
+        _state.update { it.copy(exportDialogOpen = false) }
+    }
+
+    fun generateCode(): String = sourceGenerator.generate(tree.root)
+
+    // ─────────────────────────────────────────────────────
+    // Internals
+    // ─────────────────────────────────────────────────────
+
     private fun computeValidDropTarget(
         positionInRoot: Offset,
         draggedType: ComponentTypeId,
@@ -161,12 +181,6 @@ class EditorViewModel {
         _state.update { it.copy(root = tree.root) }
     }
 
-    /**
-     * The default screen root: a Scaffold with an empty Column in its
-     * content slot. Every screen starts here — mirroring how real Compose
-     * apps are structured. The Scaffold cannot be removed (root
-     * protection in NodeTree).
-     */
     private fun defaultScreen(): AtomicNode {
         val contentColumn = AtomicNode(
             id = idGenerator.next(),

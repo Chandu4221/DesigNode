@@ -218,6 +218,8 @@ fun App(viewModel: EditorViewModel) {
                         },
                         onCopy = viewModel::copySelected,
                         onDuplicate = viewModel::duplicateSelected,
+                        rootNode = state.root,
+                        onModifiersChanged = viewModel::updateModifiers,
                         modifier = Modifier.width(280.dp),
                     )
                 }

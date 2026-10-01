@@ -1,17 +1,23 @@
 package io.github.chandu4221.designode.ui.inspector
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +38,8 @@ fun InspectorPanel(
     onNodeSelected: (NodeId?) -> Unit,
     onCopy: () -> Unit = {},
     onDuplicate: () -> Unit = {},
+    rootNode: AtomicNode? = null,
+    onModifiersChanged: (NodeId, List<ModifierToken>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -51,6 +59,8 @@ fun InspectorPanel(
                 onNodeSelected = onNodeSelected,
                 onCopy = onCopy,
                 onDuplicate = onDuplicate,
+                rootNode = rootNode,
+                onModifiersChanged = onModifiersChanged,
             )
         }
     }
@@ -79,8 +89,10 @@ private fun InspectorContent(
     onNodeSelected: (NodeId?) -> Unit,
     onCopy: () -> Unit,
     onDuplicate: () -> Unit,
+    rootNode: AtomicNode?,
+    onModifiersChanged: (NodeId, List<ModifierToken>) -> Unit,
 ) {
-    var tab by remember { mutableStateOf(0) }
+    var tab by remember { mutableStateOf(1) } // Default to Properties tab matching workflow
 
     Column(Modifier.fillMaxSize()) {
         InspectorHeader(
@@ -93,7 +105,11 @@ private fun InspectorContent(
             onDuplicate = onDuplicate,
         )
 
-        PrimaryTabRow(selectedTabIndex = tab) {
+        PrimaryTabRow(
+            selectedTabIndex = tab,
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ) {
             Tab(
                 selected = tab == 0,
                 onClick = { tab = 0 },
@@ -109,7 +125,8 @@ private fun InspectorContent(
         when (tab) {
             0 -> SlotsTab(
                 spec = spec,
-                node = node,
+                selectedNode = node,
+                rootNode = rootNode ?: node,
                 specLookup = specLookup,
                 onNodeSelected = onNodeSelected,
             )
@@ -118,6 +135,7 @@ private fun InspectorContent(
                 spec = spec,
                 node = node,
                 onPropertyChanged = onPropertyChanged,
+                onModifiersChanged = onModifiersChanged,
             )
         }
     }
@@ -133,11 +151,39 @@ private fun InspectorHeader(
     onCopy: () -> Unit,
     onDuplicate: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
+        // Top label "INSPECTOR"
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "INSPECTOR",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                imageVector = Icons.Default.Tune,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            )
+        }
+
+        // Component Icon + Label + Actions row
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Icon(
+                imageVector = iconFor(node.type.value),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(8.dp))
             Text(
                 text = spec.label,
                 style = MaterialTheme.typography.titleSmall,
@@ -148,34 +194,34 @@ private fun InspectorHeader(
             if (canDelete) {
                 IconButton(
                     onClick = onCopy,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(30.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
                         contentDescription = "Copy (Ctrl+C)",
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(
                     onClick = onDuplicate,
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(30.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.CopyAll,
                         contentDescription = "Duplicate (Ctrl+D)",
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(
                     onClick = { onRemove(node.id) },
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(30.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete (Del)",
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
@@ -190,7 +236,7 @@ private fun InspectorHeader(
             )
         }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
 @Composable
@@ -217,7 +263,7 @@ private fun VariantPicker(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
         }
         DropdownMenu(
@@ -247,18 +293,8 @@ private fun PropertiesTab(
     spec: ComponentSpec,
     node: AtomicNode,
     onPropertyChanged: (NodeId, PropertyKey, Value?) -> Unit,
+    onModifiersChanged: (NodeId, List<ModifierToken>) -> Unit,
 ) {
-    if (spec.properties.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "No editable properties",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        return
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -266,156 +302,145 @@ private fun PropertiesTab(
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        spec.properties.forEach { propertySpec ->
-            val current = node.properties[propertySpec.key]
-            PropertyEditor(
-                spec = propertySpec,
-                currentValue = current,
-                onValueChange = { onPropertyChanged(node.id, propertySpec.key, it) },
-            )
-        }
-    }
-}
+        // Modifier section matching the mockup
+        ModifierSection(
+            modifiers = node.modifiers,
+            onModifiersChanged = { onModifiersChanged(node.id, it) },
+        )
 
-// ─────────────────────────────────────────────────────
-// Slots tab
-// ─────────────────────────────────────────────────────
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        )
 
-@Composable
-private fun SlotsTab(
-    spec: ComponentSpec,
-    node: AtomicNode,
-    specLookup: (ComponentTypeId) -> ComponentSpec?,
-    onNodeSelected: (NodeId?) -> Unit,
-) {
-    if (spec.slots.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "This component has no slots",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        return
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        spec.slots.forEach { slotSpec ->
-            val children = node.slots[slotSpec.id]?.nodes().orEmpty()
-            SlotSection(
-                slotSpec = slotSpec,
-                children = children,
-                specLookup = specLookup,
-                onChildClick = onNodeSelected,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SlotSection(
-    slotSpec: SlotSpec,
-    children: List<AtomicNode>,
-    specLookup: (ComponentTypeId) -> ComponentSpec?,
-    onChildClick: (NodeId?) -> Unit,
-) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = slotSpec.label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = cardinalitySummary(slotSpec, children.size),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Spacer(Modifier.padding(top = 4.dp))
-
-        if (children.isEmpty()) {
-            EmptySlotHint(slotSpec)
+        if (spec.properties.isEmpty()) {
+            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "No additional properties",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+            }
         } else {
-            children.forEach { child ->
-                SlotChildRow(
-                    child = child,
-                    label = specLookup(child.type)?.label ?: child.type.value,
-                    onClick = { onChildClick(child.id) },
+            spec.properties.forEach { propertySpec ->
+                val current = node.properties[propertySpec.key]
+                PropertyEditor(
+                    spec = propertySpec,
+                    currentValue = current,
+                    onValueChange = { onPropertyChanged(node.id, propertySpec.key, it) },
                 )
             }
         }
     }
 }
 
+// ─────────────────────────────────────────────────────
+// Slots tab / Tree Outline View matching reference design
+// ─────────────────────────────────────────────────────
+
 @Composable
-private fun EmptySlotHint(slotSpec: SlotSpec) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp),
-        modifier = Modifier.fillMaxWidth(),
+private fun SlotsTab(
+    spec: ComponentSpec,
+    selectedNode: AtomicNode,
+    rootNode: AtomicNode,
+    specLookup: (ComponentTypeId) -> ComponentSpec?,
+    onNodeSelected: (NodeId?) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(
-            text = "Empty — drop a component here",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        // Render tree outline from root
+        TreeOutlineNode(
+            node = rootNode,
+            selectedId = selectedNode.id,
+            depth = 0,
+            specLookup = specLookup,
+            onNodeSelected = onNodeSelected,
         )
     }
 }
 
 @Composable
-private fun SlotChildRow(
-    child: AtomicNode,
-    label: String,
-    onClick: () -> Unit,
+private fun TreeOutlineNode(
+    node: AtomicNode,
+    selectedId: NodeId,
+    depth: Int,
+    specLookup: (ComponentTypeId) -> ComponentSpec?,
+    onNodeSelected: (NodeId?) -> Unit,
 ) {
+    val isSelected = node.id == selectedId
+    val label = specLookup(node.type)?.label ?: node.type.value
+    var expanded by remember { mutableStateOf(true) }
+
+    val allChildren = remember(node) {
+        node.slots.values.flatMap { it.nodes() }
+    }
+    val hasChildren = allChildren.isNotEmpty()
+
     Surface(
-        onClick = onClick,
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(6.dp),
+        onClick = { onNodeSelected(node.id) },
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(start = (depth * 14).dp, top = 2.dp, bottom = 2.dp),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (hasChildren) {
+                Icon(
+                    imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clickable { expanded = !expanded },
+                    tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Spacer(Modifier.width(16.dp))
+            }
+
+            Spacer(Modifier.width(4.dp))
+
             Icon(
-                imageVector = iconFor(child.type.value),
+                imageVector = iconFor(node.type.value),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.width(10.dp))
+
+            Spacer(Modifier.width(8.dp))
+
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
         }
     }
-}
 
-private fun cardinalitySummary(slot: SlotSpec, current: Int): String = when (val c = slot.cardinality) {
-    Cardinality.ZeroOrOne -> "$current/1"
-    Cardinality.ExactlyOne -> "$current/1"
-    Cardinality.ZeroOrMany -> current.toString()
-    Cardinality.OneOrMany -> "$current (min 1)"
-    is Cardinality.Range -> "$current/${c.max}"
+    if (hasChildren && expanded) {
+        allChildren.forEach { child ->
+            TreeOutlineNode(
+                node = child,
+                selectedId = selectedId,
+                depth = depth + 1,
+                specLookup = specLookup,
+                onNodeSelected = onNodeSelected,
+            )
+        }
+    }
 }

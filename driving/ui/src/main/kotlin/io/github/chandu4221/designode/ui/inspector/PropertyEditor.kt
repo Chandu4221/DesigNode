@@ -39,13 +39,29 @@ fun PropertyEditor(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        when (spec.kind) {
-            PropertyKind.TEXT -> TextPropertyEditor(currentValue, onValueChange)
-            PropertyKind.BOOL -> BoolPropertyEditor(currentValue, onValueChange)
-            PropertyKind.INT -> IntPropertyEditor(currentValue, onValueChange)
-            PropertyKind.DP -> DpPropertyEditor(currentValue, onValueChange)
-            PropertyKind.COLOR -> ColorPropertyEditor(currentValue, onValueChange)
-            PropertyKind.ENUM -> EnumPropertyEditor(spec, currentValue, onValueChange)
+        when {
+            spec.key.value == "verticalArrangement" -> {
+                val current = (currentValue as? Value.EnumValue)?.name ?: "top"
+                VerticalArrangementBar(
+                    currentValue = current,
+                    onValueChange = { onValueChange(Value.EnumValue(it)) },
+                    modifier = Modifier.padding(horizontal = 0.dp),
+                )
+            }
+            spec.key.value == "horizontalAlignment" -> {
+                val current = (currentValue as? Value.EnumValue)?.name ?: "start"
+                HorizontalAlignmentBar(
+                    currentValue = current,
+                    onValueChange = { onValueChange(Value.EnumValue(it)) },
+                    modifier = Modifier.padding(horizontal = 0.dp),
+                )
+            }
+            spec.kind == PropertyKind.TEXT -> TextPropertyEditor(currentValue, onValueChange)
+            spec.kind == PropertyKind.BOOL -> BoolPropertyEditor(currentValue, onValueChange)
+            spec.kind == PropertyKind.INT -> IntPropertyEditor(currentValue, onValueChange)
+            spec.kind == PropertyKind.DP -> DpPropertyEditor(currentValue, onValueChange)
+            spec.kind == PropertyKind.COLOR -> ColorPropertyEditor(currentValue, onValueChange)
+            spec.kind == PropertyKind.ENUM -> EnumPropertyEditor(spec, currentValue, onValueChange)
         }
     }
 }

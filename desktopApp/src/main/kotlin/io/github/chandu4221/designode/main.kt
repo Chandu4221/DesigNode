@@ -1,11 +1,16 @@
 package io.github.chandu4221.designode
 
-import androidx.compose.material.Text
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import io.github.chandu4221.designode.ui.App
+import io.github.chandu4221.designode.ui.EditorViewModel
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "DesigNode") {
-        Text("DesigNode — composition root")
+    val viewModel = EditorViewModel()
+    Window(
+        onCloseRequest = ::exitApplication,
+        title = "DesigNode",
+    ) {
+        App(viewModel = viewModel)
     }
 }

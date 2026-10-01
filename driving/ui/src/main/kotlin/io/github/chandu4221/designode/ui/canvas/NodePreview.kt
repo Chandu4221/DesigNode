@@ -1,6 +1,7 @@
 package io.github.chandu4221.designode.ui.canvas
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +35,7 @@ fun NodePreview(
 
     val slotRenderer: SlotRenderer = { slotId ->
         val content = node.slots[slotId] ?: SlotContent.Empty
+        val isScaffoldContent = node.type.value == "Scaffold" && slotId.value == "content"
         content.nodes().forEach { child ->
             NodePreview(
                 node = child,
@@ -42,6 +44,7 @@ fun NodePreview(
                 selectedId = selectedId,
                 hoveredId = hoveredId,
                 dropTargetId = dropTargetId,
+                modifier = if (isScaffoldContent) Modifier.fillMaxSize() else Modifier,
             )
         }
     }

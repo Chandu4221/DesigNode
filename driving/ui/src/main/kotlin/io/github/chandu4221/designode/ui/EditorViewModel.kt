@@ -629,11 +629,22 @@ class EditorViewModel(
         val spec = registry.spec(node.type) ?: return null
         val slotId = resolveDropSlot(spec, draggedType) ?: return null
 
-        return if (validator.canDrop(node, slotId, fakeChild).isSuccess) {
-            DropTarget(node.id, slotId)
-        } else {
-            null
+        if (validator.canDrop(node, slotId, fakeChild).isSuccess) {
+            return DropTarget(node.id, slotId)
         }
+
+        // If dropping into candidate container failed (e.g. Scaffold.content has Cardinality.ExactlyOne and is full),
+        // check if that slot's child is an open container that can accept the dragged component.
+        val slotChildren = node.slots[slotId]?.nodes().orEmpty()
+        for (child in slotChildren) {
+            val childSpec = registry.spec(child.type) ?: continue
+            val childSlotId = resolveDropSlot(childSpec, draggedType) ?: continue
+            if (validator.canDrop(child, childSlotId, fakeChild).isSuccess) {
+                return DropTarget(child.id, childSlotId)
+            }
+        }
+
+        return null
     }
 
     private fun findDedicatedAncestorSlot(

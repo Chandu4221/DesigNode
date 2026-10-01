@@ -61,6 +61,7 @@ internal val ColumnPreview: PreviewRenderer = { node, slots ->
         horizontalAlignment = horizontalAlignment(
             node.properties.enumValue("horizontalAlignment", "start")
         ),
+        modifier = Modifier.fillMaxSize(),
     ) { slots(SlotId("content")) }
 }
 

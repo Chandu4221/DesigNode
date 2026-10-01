@@ -120,4 +120,21 @@ class EditorDropTargetTest {
         assertEquals(scaffoldId, dropTarget.nodeId)
         assertEquals(SlotId("floatingActionButton"), dropTarget.slotId)
     }
+
+    @Test
+    fun `dragging Button directly over Scaffold routes into content Column`() {
+        val viewModel = EditorViewModel(fakeRepo)
+        val scaffoldId = viewModel.state.value.root.id
+        val columnId = viewModel.state.value.root.slots[SlotId("content")]!!.nodes().first().id
+
+        viewModel.hitTestRegistry.record(scaffoldId, Rect(0f, 0f, 360f, 720f))
+
+        viewModel.beginDrag(ComponentTypeId("Button"))
+        viewModel.updateDragPosition(Offset(180f, 200f))
+
+        val dropTarget = viewModel.state.value.dropTarget
+        assertNotNull(dropTarget)
+        assertEquals(columnId, dropTarget.nodeId)
+        assertEquals(SlotId("content"), dropTarget.slotId)
+    }
 }

@@ -192,7 +192,7 @@ fun App(viewModel: EditorViewModel) {
                         onDragMove = viewModel::updateDragPosition,
                         onDragEnd = viewModel::commitDrag,
                         onDragCancel = viewModel::cancelDrag,
-                        modifier = Modifier.width(220.dp),
+                        modifier = Modifier.width(240.dp),
                     )
                     CanvasPanel(
                         root = state.root,

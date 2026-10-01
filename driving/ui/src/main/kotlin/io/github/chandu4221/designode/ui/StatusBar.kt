@@ -40,20 +40,20 @@ fun StatusBar(
             Icon(
                 imageVector = Icons.Default.AccountTree,
                 contentDescription = "Git branch",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(13.dp),
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 text = "git: $branchName",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = "|",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outlineVariant,
+                color = MaterialTheme.colorScheme.outline,
             )
             Spacer(Modifier.width(8.dp))
 
@@ -69,7 +69,7 @@ fun StatusBar(
                 color = when (saveStatus) {
                     is SaveStatus.Failed -> MaterialTheme.colorScheme.error
                     SaveStatus.Saving -> MaterialTheme.colorScheme.primary
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
 
@@ -79,34 +79,34 @@ fun StatusBar(
             Icon(
                 imageVector = Icons.Default.AutoAwesome,
                 contentDescription = "AI Assist",
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(13.dp),
             )
             Spacer(Modifier.width(12.dp))
             Icon(
                 imageVector = Icons.Default.WarningAmber,
                 contentDescription = "Warnings",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(13.dp),
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "No changes",
+                text = "No warnings",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.width(12.dp))
             Box(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF4CAF50)),
+                    .background(Color(0xFF2E7D32)),
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 text = "Build status: OK",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }

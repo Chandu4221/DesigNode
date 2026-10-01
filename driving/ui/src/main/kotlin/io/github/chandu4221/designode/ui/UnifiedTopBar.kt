@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,6 +67,9 @@ fun UnifiedTopBar(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.semantics(mergeDescendants = true) {
+                    contentDescription = "Window controls"
+                },
             ) {
                 Box(Modifier.size(11.dp).clip(CircleShape).background(Color(0xFFED6A5E)))
                 Box(Modifier.size(11.dp).clip(CircleShape).background(Color(0xFFF5BF4F)))
@@ -125,7 +130,7 @@ fun UnifiedTopBar(
                 Text(
                     text = "Project: ",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = projectName,
@@ -136,7 +141,7 @@ fun UnifiedTopBar(
                 Text(
                     text = " / ",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = "${activeScreen?.name?.lowercase()?.replace(" ", "_") ?: "screen"}.kt",
@@ -158,7 +163,7 @@ fun UnifiedTopBar(
                     contentDescription = "Undo (Ctrl+Z)",
                     modifier = Modifier.size(16.dp),
                     tint = if (canUndo) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 )
             }
             IconButton(
@@ -171,7 +176,7 @@ fun UnifiedTopBar(
                     contentDescription = "Redo (Ctrl+Shift+Z)",
                     modifier = Modifier.size(16.dp),
                     tint = if (canRedo) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 )
             }
 
@@ -352,7 +357,7 @@ private fun ScreenPillTab(
                 imageVector = Icons.Default.Smartphone,
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),
-                tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = screen.name,
@@ -366,13 +371,13 @@ private fun ScreenPillTab(
             Box {
                 IconButton(
                     onClick = { menuExpanded = true },
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        contentDescription = "${screen.name} options",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 

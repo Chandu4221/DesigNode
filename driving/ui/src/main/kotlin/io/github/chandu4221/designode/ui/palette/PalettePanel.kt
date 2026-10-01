@@ -145,13 +145,13 @@ private fun PaletteHeader() {
             text = "COMPONENTS",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
         Text(
             text = "—",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -168,9 +168,9 @@ private fun PaletteSearchField(
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,
-                contentDescription = null,
+                contentDescription = "Search components",
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         },
         singleLine = true,
@@ -179,7 +179,7 @@ private fun PaletteSearchField(
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
             focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             focusedBorderColor = MaterialTheme.colorScheme.primary,
         ),
         modifier = Modifier
@@ -201,10 +201,10 @@ private fun FamilyHeader(
             .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = onToggle, modifier = Modifier.size(22.dp)) {
+        IconButton(onClick = onToggle, modifier = Modifier.size(24.dp)) {
             Icon(
                 imageVector = Icons.Default.ExpandMore,
-                contentDescription = if (expanded) "Collapse" else "Expand",
+                contentDescription = if (expanded) "Collapse ${family.value}" else "Expand ${family.value}",
                 modifier = Modifier
                     .size(16.dp)
                     .rotate(if (expanded) 0f else -90f),
@@ -218,12 +218,19 @@ private fun FamilyHeader(
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f).padding(start = 2.dp),
         )
-        Text(
-            text = count.toString(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.padding(end = 10.dp),
-        )
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.padding(end = 8.dp),
+        ) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
+            )
+        }
     }
 }
 
@@ -235,7 +242,7 @@ private fun EmptySearch(query: String) {
     ) {
         Text(
             text = "No components match \"$query\"",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }

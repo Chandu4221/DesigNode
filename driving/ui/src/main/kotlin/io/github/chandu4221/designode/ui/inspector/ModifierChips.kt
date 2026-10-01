@@ -58,7 +58,7 @@ fun ModifierSection(
                 shape = RoundedCornerShape(8.dp),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    MaterialTheme.colorScheme.outlineVariant,
                 ),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -203,15 +203,20 @@ private fun ModifierChip(
                     .clickable(onClick = onClick)
                     .padding(end = 4.dp),
             )
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Remove modifier",
+            Box(
                 modifier = Modifier
-                    .size(14.dp)
-                    .clip(RoundedCornerShape(7.dp))
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .clickable(onClick = onRemove),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Remove ${formatTokenLabel(token)}",
+                    modifier = Modifier.size(13.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

@@ -62,27 +62,27 @@ fun ScaffoldSlotPlaceholder(
     val isCompatibleDrag = dragType != null && (acceptedTypes.isEmpty() || dragType in acceptedTypes)
 
     val strokeColor = when {
-        isTarget -> Color(0xFF4CAF50)
-        isCompatibleDrag -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
-        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+        isTarget -> Color(0xFF388E3C)
+        isCompatibleDrag -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.outline
     }
 
     val backgroundColor = when {
-        isTarget -> Color(0x1F4CAF50)
-        isCompatibleDrag -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-        else -> Color.Transparent
+        isTarget -> Color(0x2E4CAF50)
+        isCompatibleDrag -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
     }
 
     val contentColor = when {
-        isTarget -> Color(0xFF2E7D32)
+        isTarget -> Color(0xFF1B5E20)
         isCompatibleDrag -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val borderWidth = when {
-        isTarget -> 2.dp
-        isCompatibleDrag -> 1.5.dp
-        else -> 1.dp
+        isTarget -> 2.5.dp
+        isCompatibleDrag -> 2.dp
+        else -> 1.5.dp
     }
 
     Box(

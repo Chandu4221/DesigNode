@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
@@ -53,11 +54,14 @@ fun CanvasPanel(
     modifier: Modifier = Modifier,
     transformState: CanvasTransformState = rememberCanvasTransformState(),
 ) {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val canvasBg = if (isDark) Color(0xFF181210) else Color(0xFFEDE4DD)
+
     Box(
         modifier = modifier
             .fillMaxHeight()
             .clipToBounds()
-            .background(Color(0xFF181210))
+            .background(canvasBg)
             .onGloballyPositioned { coordinates ->
                 transformState.containerSize = coordinates.size
             }
@@ -149,7 +153,7 @@ private fun EmptyCanvasHint() {
         Text(
             text = "Drag a component\nfrom the palette",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Medium,
         )
@@ -158,15 +162,19 @@ private fun EmptyCanvasHint() {
 
 @Composable
 private fun DeviceFrame(content: @Composable () -> Unit) {
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val bezelBg = if (isDark) Color(0xFF1E1613) else Color(0xFF28201C)
+    val bezelBorder = if (isDark) Color(0xFF382922) else Color(0xFF453630)
+
     // Outer phone bezel
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(36.dp))
-            .background(Color(0xFF1E1613))
+            .background(bezelBg)
             .border(
                 width = 3.dp,
-                color = Color(0xFF382922),
+                color = bezelBorder,
                 shape = RoundedCornerShape(36.dp),
             )
             .padding(5.dp),
@@ -191,7 +199,7 @@ private fun DeviceFrame(content: @Composable () -> Unit) {
                     .width(76.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.45f))
+                    .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f))
             )
         }
     }
@@ -199,6 +207,8 @@ private fun DeviceFrame(content: @Composable () -> Unit) {
 
 @Composable
 private fun PhoneStatusBar(modifier: Modifier = Modifier) {
+    val iconColor = MaterialTheme.colorScheme.onBackground
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -210,8 +220,8 @@ private fun PhoneStatusBar(modifier: Modifier = Modifier) {
         Text(
             text = "12:30",
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.85f),
+            fontWeight = FontWeight.Bold,
+            color = iconColor,
         )
         // Center Camera Punch-hole
         Box(
@@ -231,9 +241,9 @@ private fun PhoneStatusBar(modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(1.5.dp),
             ) {
-                Box(Modifier.width(2.5.dp).height(4.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)))
-                Box(Modifier.width(2.5.dp).height(7.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)))
-                Box(Modifier.width(2.5.dp).height(10.dp).background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)))
+                Box(Modifier.width(2.5.dp).height(4.dp).background(iconColor))
+                Box(Modifier.width(2.5.dp).height(7.dp).background(iconColor))
+                Box(Modifier.width(2.5.dp).height(10.dp).background(iconColor))
             }
             // Battery icon (pill + cap)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -241,21 +251,21 @@ private fun PhoneStatusBar(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .width(18.dp)
                         .height(9.dp)
-                        .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), RoundedCornerShape(2.dp))
+                        .border(1.dp, iconColor, RoundedCornerShape(2.dp))
                         .padding(1.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .fillMaxWidth(0.85f)
-                            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), RoundedCornerShape(1.dp))
+                            .background(iconColor, RoundedCornerShape(1.dp))
                     )
                 }
                 Box(
                     modifier = Modifier
                         .width(1.5.dp)
                         .height(4.dp)
-                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f), RoundedCornerShape(topEnd = 1.dp, bottomEnd = 1.dp))
+                        .background(iconColor, RoundedCornerShape(topEnd = 1.dp, bottomEnd = 1.dp))
                 )
             }
         }

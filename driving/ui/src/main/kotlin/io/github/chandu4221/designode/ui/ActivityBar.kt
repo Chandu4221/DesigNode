@@ -1,5 +1,7 @@
 package io.github.chandu4221.designode.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipArea
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +96,7 @@ fun ActivityBar(
             )
             Spacer(Modifier.height(4.dp))
             ActivityBarIcon(
-                icon = Icons.Default.HelpOutline,
+                icon = Icons.Default.Info,
                 contentDescription = "Help & Docs",
                 isSelected = false,
                 onClick = {},
@@ -109,6 +112,7 @@ fun ActivityBar(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ActivityBarIcon(
     icon: ImageVector,
@@ -120,34 +124,51 @@ private fun ActivityBarIcon(
     val iconColor = if (isSelected) {
         MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
-            ),
-        contentAlignment = Alignment.Center,
+    TooltipArea(
+        tooltip = {
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = MaterialTheme.colorScheme.inverseSurface,
+                shadowElevation = 4.dp,
+            ) {
+                Text(
+                    text = contentDescription,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        },
     ) {
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width(3.dp)
-                    .height(20.dp)
-                    .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
-                    .background(indicatorColor)
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
+                .background(
+                    if (isSelected) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .width(3.dp)
+                        .height(20.dp)
+                        .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
+                        .background(indicatorColor)
+                )
+            }
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = iconColor,
+                modifier = Modifier.size(20.dp),
             )
         }
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            tint = iconColor,
-            modifier = Modifier.size(20.dp),
-        )
     }
 }

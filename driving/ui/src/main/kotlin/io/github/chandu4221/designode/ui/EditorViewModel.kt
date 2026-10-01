@@ -6,23 +6,37 @@ import io.github.chandu4221.designode.codegen.ComposeSourceGenerator
 import io.github.chandu4221.designode.domain.model.AtomicNode
 import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.NodeId
+import io.github.chandu4221.designode.domain.model.Project
+import io.github.chandu4221.designode.domain.model.ProjectId
 import io.github.chandu4221.designode.domain.model.PropertyKey
+import io.github.chandu4221.designode.domain.model.Screen
+import io.github.chandu4221.designode.domain.model.ScreenId
 import io.github.chandu4221.designode.domain.model.SlotContent
 import io.github.chandu4221.designode.domain.model.SlotId
 import io.github.chandu4221.designode.domain.model.Value
 import io.github.chandu4221.designode.domain.model.VariantId
 import io.github.chandu4221.designode.domain.port.NodeEventPublisher
+import io.github.chandu4221.designode.domain.port.ProjectRepository
+import io.github.chandu4221.designode.domain.port.ProjectSummary
 import io.github.chandu4221.designode.domain.port.RandomNodeIdGenerator
 import io.github.chandu4221.designode.domain.service.NodeTree
 import io.github.chandu4221.designode.domain.service.SlotValidator
 import io.github.chandu4221.designode.domain.spec.ComponentSpec
 import io.github.chandu4221.designode.ui.canvas.HitTestRegistry
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class EditorViewModel {
+class EditorViewModel(
+    private val repository: ProjectRepository,
+) {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val registry = Material3Catalog.registry()
     private val validator = SlotValidator(registry)
@@ -31,12 +45,13 @@ class EditorViewModel {
     private val sourceGenerator = ComposeSourceGenerator()
 
     val hitTestRegistry = HitTestRegistry()
-
     val specs: List<ComponentSpec> = registry.all()
 
     fun spec(type: ComponentTypeId): ComponentSpec? = registry.spec(type)
 
-    private val tree = NodeTree(
+    private var currentProjectId: ProjectId = ProjectId.generate()
+    private var currentScreenId: ScreenId = ScreenId.generate()
+    private var tree: NodeTree = NodeTree(
         registry = registry,
         validator = validator,
         publisher = publisher,
@@ -46,6 +61,9 @@ class EditorViewModel {
 
     private val _state = MutableStateFlow(EditorState(root = tree.root))
     val state: StateFlow<EditorState> = _state.asStateFlow()
+
+    private val _projectList = MutableStateFlow<List<ProjectSummary>>(emptyList())
+    val projectList: StateFlow<List<ProjectSummary>> = _projectList.asStateFlow()
 
     // ─────────────────────────────────────────────────────
     // Selection
@@ -66,17 +84,20 @@ class EditorViewModel {
     fun updateVariant(id: NodeId, variant: VariantId?) {
         tree.updateVariant(id, variant)
         syncRoot()
+        markDirty()
     }
 
     fun updateProperty(id: NodeId, key: PropertyKey, value: Value?) {
         tree.updateProperty(id, key, value)
         syncRoot()
+        markDirty()
     }
 
     fun removeNode(id: NodeId) {
         tree.remove(id).onSuccess {
             _state.update { it.copy(selectedId = null) }
             syncRoot()
+            markDirty()
         }
     }
 
@@ -110,11 +131,104 @@ class EditorViewModel {
         tree.insert(targetNode.id, slotId, draggedType).onSuccess { newId ->
             _state.update { it.copy(selectedId = newId) }
             syncRoot()
+            markDirty()
         }
     }
 
     fun cancelDrag() {
         _state.update { it.copy(dragType = null, dropTargetId = null) }
+    }
+
+    // ─────────────────────────────────────────────────────
+    // Project lifecycle
+    // ─────────────────────────────────────────────────────
+
+    fun newProject() {
+        currentProjectId = ProjectId.generate()
+        currentScreenId = ScreenId.generate()
+        tree = NodeTree(
+            registry = registry,
+            validator = validator,
+            publisher = publisher,
+            idGenerator = idGenerator,
+            root = defaultScreen(),
+        )
+        _state.update {
+            it.copy(
+                root = tree.root,
+                projectName = "Untitled",
+                selectedId = null,
+                hoveredId = null,
+                saveStatus = SaveStatus.Idle,
+            )
+        }
+    }
+
+    fun save() {
+        val project = Project(
+            id = currentProjectId,
+            name = _state.value.projectName,
+            screens = mapOf(
+                currentScreenId to Screen(
+                    id = currentScreenId,
+                    name = "Main",
+                    root = tree.root,
+                )
+            ),
+            startScreenId = currentScreenId,
+        )
+        scope.launch {
+            _state.update { it.copy(saveStatus = SaveStatus.Saving) }
+            repository.save(project)
+                .onSuccess {
+                    _state.update { state -> state.copy(saveStatus = SaveStatus.Saved) }
+                }
+                .onFailure { throwable ->
+                    val message = throwable.message ?: "Save failed"
+                    _state.update { state -> state.copy(saveStatus = SaveStatus.Failed(message)) }
+                }
+        }
+    }
+
+    fun openProjectPicker() {
+        _state.update { it.copy(projectPickerOpen = true) }
+        scope.launch {
+            repository.list()
+                .onSuccess { list -> _projectList.value = list }
+                .onFailure { _projectList.value = emptyList() }
+        }
+    }
+
+    fun closeProjectPicker() {
+        _state.update { it.copy(projectPickerOpen = false) }
+    }
+
+    fun loadProject(id: ProjectId) {
+        scope.launch {
+            repository.load(id)
+                .onSuccess { project ->
+                    val screen = project.screens.values.firstOrNull() ?: return@onSuccess
+                    currentProjectId = project.id
+                    currentScreenId = screen.id
+                    tree = NodeTree(
+                        registry = registry,
+                        validator = validator,
+                        publisher = publisher,
+                        idGenerator = idGenerator,
+                        root = screen.root,
+                    )
+                    _state.update { state ->
+                        state.copy(
+                            root = tree.root,
+                            projectName = project.name,
+                            selectedId = null,
+                            hoveredId = null,
+                            projectPickerOpen = false,
+                            saveStatus = SaveStatus.Idle,
+                        )
+                    }
+                }
+        }
     }
 
     // ─────────────────────────────────────────────────────
@@ -134,6 +248,16 @@ class EditorViewModel {
     // ─────────────────────────────────────────────────────
     // Internals
     // ─────────────────────────────────────────────────────
+
+    private fun markDirty() {
+        _state.update { state ->
+            if (state.saveStatus is SaveStatus.Saved) {
+                state.copy(saveStatus = SaveStatus.Idle)
+            } else {
+                state
+            }
+        }
+    }
 
     private fun computeValidDropTarget(
         positionInRoot: Offset,

@@ -10,12 +10,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CreateNewFolder
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,10 +38,12 @@ import io.github.chandu4221.designode.ui.canvas.PreviewRenderersRegistry
 import io.github.chandu4221.designode.ui.export.ExportDialog
 import io.github.chandu4221.designode.ui.inspector.InspectorPanel
 import io.github.chandu4221.designode.ui.palette.PalettePanel
+import io.github.chandu4221.designode.ui.project.ProjectPickerDialog
 
 @Composable
 fun App(viewModel: EditorViewModel) {
     val state by viewModel.state.collectAsState()
+    val projectList by viewModel.projectList.collectAsState()
     val renderers = remember { PreviewRenderersRegistry.build() }
 
     val selectedNode = state.selectedId?.let { state.root.findNode(it) }
@@ -48,7 +55,14 @@ fun App(viewModel: EditorViewModel) {
             color = MaterialTheme.colorScheme.background,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                TopBar(onExport = viewModel::openExportDialog)
+                TopBar(
+                    projectName = state.projectName,
+                    saveStatus = state.saveStatus,
+                    onNew = viewModel::newProject,
+                    onOpen = viewModel::openProjectPicker,
+                    onSave = viewModel::save,
+                    onExport = viewModel::openExportDialog,
+                )
                 Row(modifier = Modifier.fillMaxSize()) {
                     PalettePanel(
                         specs = viewModel.specs,
@@ -90,22 +104,34 @@ fun App(viewModel: EditorViewModel) {
             androidx.compose.runtime.LaunchedEffect(state.exportDialogOpen) {
                 cachedCode = viewModel.generateCode()
             }
-            ExportDialog(
-                code = cachedCode,
-                onDismiss = viewModel::closeExportDialog,
+            ExportDialog(code = cachedCode, onDismiss = viewModel::closeExportDialog)
+        }
+
+        if (state.projectPickerOpen) {
+            ProjectPickerDialog(
+                projects = projectList,
+                onOpen = viewModel::loadProject,
+                onDismiss = viewModel::closeProjectPicker,
             )
         }
     }
 }
 
 @Composable
-private fun TopBar(onExport: () -> Unit) {
+private fun TopBar(
+    projectName: String,
+    saveStatus: SaveStatus,
+    onNew: () -> Unit,
+    onOpen: () -> Unit,
+    onSave: () -> Unit,
+    onExport: () -> Unit,
+) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.fillMaxWidth().height(56.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -113,7 +139,45 @@ private fun TopBar(onExport: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = "·",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.width(16.dp))
+            Text(
+                text = projectName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
             Spacer(Modifier.weight(1f))
+
+            SaveStatusBadge(saveStatus)
+
+            IconButton(onClick = onNew) {
+                Icon(
+                    imageVector = Icons.Default.CreateNewFolder,
+                    contentDescription = "New project",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onOpen) {
+                Icon(
+                    imageVector = Icons.Default.FolderOpen,
+                    contentDescription = "Open project",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onSave) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = "Save",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
             Button(onClick = onExport) {
                 Icon(
                     imageVector = Icons.Default.Upload,
@@ -125,6 +189,22 @@ private fun TopBar(onExport: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun SaveStatusBadge(status: SaveStatus) {
+    val (text, color) = when (status) {
+        SaveStatus.Idle -> return
+        SaveStatus.Saving -> "Saving…" to MaterialTheme.colorScheme.onSurfaceVariant
+        SaveStatus.Saved -> "Saved" to MaterialTheme.colorScheme.primary
+        is SaveStatus.Failed -> "Error" to MaterialTheme.colorScheme.error
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        modifier = Modifier.padding(end = 8.dp),
+    )
 }
 
 private fun AtomicNode.findNode(id: NodeId): AtomicNode? {

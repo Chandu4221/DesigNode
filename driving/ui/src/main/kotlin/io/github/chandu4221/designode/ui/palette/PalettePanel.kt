@@ -4,11 +4,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,14 +31,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.chandu4221.designode.domain.model.ComponentTypeId
 import io.github.chandu4221.designode.domain.model.FamilyId
 import io.github.chandu4221.designode.domain.spec.ComponentSpec
 
 @Composable
 fun PalettePanel(
     specs: List<ComponentSpec>,
+    draggingType: ComponentTypeId?,
+    onDragStart: (ComponentTypeId) -> Unit,
+    onDragMove: (Offset) -> Unit,
+    onDragEnd: () -> Unit,
+    onDragCancel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var query by remember { mutableStateOf("") }
@@ -59,10 +64,7 @@ fun PalettePanel(
         Column(Modifier.fillMaxSize()) {
             PaletteHeader()
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            PaletteSearchField(
-                query = query,
-                onQueryChange = { query = it },
-            )
+            PaletteSearchField(query = query, onQueryChange = { query = it })
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -89,7 +91,14 @@ fun PalettePanel(
                         }
                         if (isExpanded) {
                             items(familySpecs, key = { it.type.value }) { spec ->
-                                PaletteItem(spec = spec)
+                                PaletteItem(
+                                    spec = spec,
+                                    isDragging = spec.type == draggingType,
+                                    onDragStart = { onDragStart(spec.type) },
+                                    onDragMove = onDragMove,
+                                    onDragEnd = onDragEnd,
+                                    onDragCancel = onDragCancel,
+                                )
                             }
                         }
                     }
@@ -120,9 +129,7 @@ private fun PaletteSearchField(
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = {
-            Text("Search", style = MaterialTheme.typography.bodySmall)
-        },
+        placeholder = { Text("Search", style = MaterialTheme.typography.bodySmall) },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,

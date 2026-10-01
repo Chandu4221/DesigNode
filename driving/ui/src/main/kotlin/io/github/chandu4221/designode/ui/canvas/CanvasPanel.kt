@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,14 +22,14 @@ import io.github.chandu4221.designode.domain.model.NodeId
 fun CanvasPanel(
     root: AtomicNode,
     renderers: PreviewRenderers,
+    hitTestRegistry: HitTestRegistry,
     selectedId: NodeId?,
     hoveredId: NodeId?,
+    dropTargetId: NodeId?,
     onNodeSelected: (NodeId?) -> Unit,
     onNodeHovered: (NodeId?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hitTestRegistry = remember { HitTestRegistry() }
-
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -49,10 +48,10 @@ fun CanvasPanel(
                     hitTestRegistry = hitTestRegistry,
                     selectedId = selectedId,
                     hoveredId = hoveredId,
+                    dropTargetId = dropTargetId,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            // Overlay on top — intercepts all input for the frame area.
             SelectionOverlay(
                 hitTestRegistry = hitTestRegistry,
                 onNodeSelected = onNodeSelected,

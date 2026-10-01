@@ -43,13 +43,20 @@ fun App(viewModel: EditorViewModel) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     PalettePanel(
                         specs = viewModel.specs,
+                        draggingType = state.dragType,
+                        onDragStart = viewModel::beginDrag,
+                        onDragMove = viewModel::updateDragPosition,
+                        onDragEnd = viewModel::commitDrag,
+                        onDragCancel = viewModel::cancelDrag,
                         modifier = Modifier.width(240.dp),
                     )
                     CanvasPanel(
                         root = state.root,
                         renderers = renderers,
+                        hitTestRegistry = viewModel.hitTestRegistry,
                         selectedId = state.selectedId,
                         hoveredId = state.hoveredId,
+                        dropTargetId = state.dropTargetId,
                         onNodeSelected = viewModel::selectNode,
                         onNodeHovered = viewModel::hoverNode,
                         modifier = Modifier.weight(1f),

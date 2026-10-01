@@ -56,6 +56,13 @@ fun PropertyEditor(
                     modifier = Modifier.padding(horizontal = 0.dp),
                 )
             }
+            spec.key.value == "name" && spec.label == "Icon name" -> {
+                val current = (currentValue as? Value.Text)?.value ?: "Favorite"
+                io.github.chandu4221.designode.ui.icon.IconPickerPropertyEditor(
+                    currentName = current,
+                    onSelectIcon = { onValueChange(Value.Text(it)) },
+                )
+            }
             spec.kind == PropertyKind.TEXT -> TextPropertyEditor(currentValue, onValueChange)
             spec.kind == PropertyKind.BOOL -> BoolPropertyEditor(currentValue, onValueChange)
             spec.kind == PropertyKind.INT -> IntPropertyEditor(currentValue, onValueChange)

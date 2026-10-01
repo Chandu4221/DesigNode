@@ -1,6 +1,8 @@
 package io.github.chandu4221.designode.ui
 
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -254,6 +259,48 @@ fun App(viewModel: EditorViewModel) {
                 onStyleChange = viewModel::updateThemeStyle,
                 onDismiss = viewModel::closeThemeDialog,
             )
+        }
+
+        // Drag Ghost under cursor
+        val dragType = state.dragType
+        val dragPosition = state.dragPosition
+        if (dragType != null && dragPosition != null) {
+            val spec = viewModel.spec(dragType)
+            val label = spec?.label ?: dragType.value
+            Box(modifier = Modifier.fillMaxSize()) {
+                Surface(
+                    shape = RoundedCornerShape(17.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
+                    shadowElevation = 8.dp,
+                    modifier = Modifier
+                        .graphicsLayer {
+                            translationX = dragPosition.x - 20f
+                            translationY = dragPosition.y - 20f
+                            alpha = 0.92f
+                        }
+                        .height(34.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = io.github.chandu4221.designode.ui.palette.iconFor(dragType.value),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+            }
         }
     }
 }

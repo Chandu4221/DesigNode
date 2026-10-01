@@ -335,21 +335,21 @@ class EditorViewModel(
     // ─────────────────────────────────────────────────────
 
     fun beginDrag(type: ComponentTypeId) {
-        _state.update { it.copy(dragType = type, dropTarget = null) }
+        _state.update { it.copy(dragType = type, dragPosition = null, dropTarget = null) }
     }
 
     fun updateDragPosition(positionInRoot: Offset) {
         val current = _state.value
         val draggedType = current.dragType ?: return
         val target = computeValidDropTarget(positionInRoot, draggedType)
-        _state.update { it.copy(dropTarget = target) }
+        _state.update { it.copy(dragPosition = positionInRoot, dropTarget = target) }
     }
 
     fun commitDrag() {
         val current = _state.value
         val draggedType = current.dragType
         val target = current.dropTarget
-        _state.update { it.copy(dragType = null, dropTarget = null) }
+        _state.update { it.copy(dragType = null, dragPosition = null, dropTarget = null) }
 
         if (draggedType == null || target == null) return
 
@@ -361,7 +361,7 @@ class EditorViewModel(
     }
 
     fun cancelDrag() {
-        _state.update { it.copy(dragType = null, dropTarget = null) }
+        _state.update { it.copy(dragType = null, dragPosition = null, dropTarget = null) }
     }
 
     // ─────────────────────────────────────────────────────

@@ -31,8 +31,9 @@ internal val TextPreview: PreviewRenderer = { node, _ ->
 }
 
 internal val IconPreview: PreviewRenderer = { node, _ ->
+    val iconName = node.properties.text("name", "Favorite")
     Icon(
-        imageVector = Icons.Default.Star,
+        imageVector = io.github.chandu4221.designode.ui.icon.MaterialIconRegistry.findOrDefault(iconName),
         contentDescription = node.properties.text("contentDescription"),
         modifier = Modifier.size(node.properties.dp("size", 24f).dp),
         tint = node.properties.composeColor("tint"),

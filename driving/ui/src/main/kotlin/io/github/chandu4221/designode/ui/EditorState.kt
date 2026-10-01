@@ -28,6 +28,7 @@ data class EditorState(
     val selectedId: NodeId? = null,
     val hoveredId: NodeId? = null,
     val dragType: ComponentTypeId? = null,
+    val dragPosition: androidx.compose.ui.geometry.Offset? = null,
     val dropTarget: DropTarget? = null,
     val exportDialogOpen: Boolean = false,
     val projectPickerOpen: Boolean = false,

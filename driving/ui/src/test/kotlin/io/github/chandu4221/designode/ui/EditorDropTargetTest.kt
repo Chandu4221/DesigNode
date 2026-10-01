@@ -137,4 +137,29 @@ class EditorDropTargetTest {
         assertEquals(columnId, dropTarget.nodeId)
         assertEquals(SlotId("content"), dropTarget.slotId)
     }
+
+    @Test
+    fun `drag position is tracked and cleared on commit and cancel`() {
+        val viewModel = EditorViewModel(fakeRepo)
+        assertEquals(null, viewModel.state.value.dragPosition)
+
+        viewModel.beginDrag(ComponentTypeId("Button"))
+        assertEquals(null, viewModel.state.value.dragPosition)
+        assertEquals(ComponentTypeId("Button"), viewModel.state.value.dragType)
+
+        viewModel.updateDragPosition(Offset(100f, 250f))
+        assertEquals(Offset(100f, 250f), viewModel.state.value.dragPosition)
+
+        viewModel.cancelDrag()
+        assertEquals(null, viewModel.state.value.dragPosition)
+        assertEquals(null, viewModel.state.value.dragType)
+
+        viewModel.beginDrag(ComponentTypeId("Text"))
+        viewModel.updateDragPosition(Offset(50f, 75f))
+        assertEquals(Offset(50f, 75f), viewModel.state.value.dragPosition)
+
+        viewModel.commitDrag()
+        assertEquals(null, viewModel.state.value.dragPosition)
+        assertEquals(null, viewModel.state.value.dragType)
+    }
 }
